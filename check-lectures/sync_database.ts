@@ -314,7 +314,7 @@ async function syncCategory(category: 'humanity' | 'science') {
 // ================= 执行入口 =================
 async function main() {
   try {
-    // await syncCategory("humanity");
+    await syncCategory("humanity");
     await syncCategory("science");
     console.log("\n🎉 所有讲座数据同步流程执行完毕！");
   } catch (err) {
