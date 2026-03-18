@@ -1,0 +1,78 @@
+name: Check UCAS Lecture
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  
+  # schedule:
+    # see: https://crontab.guru/ for corn format.
+    # UTC  0 => 8 am (GMT+8)
+    # UTC  8 => 4 pm (GMT+8)
+    # UTC 11 => 7 pm (GMT+8)
+    # UTC 13 => 9 pm (GMT+8)
+    # ==================
+    # At every 10th minute past every hour from 8 through 10. (4pm-7pm)
+    # - cron: '*/10 8-10 * * *'       # 18 times
+    # At every 30th minute past every hour from 0 through 7 and every hour from 11 through 12. (8am-4pm, 7pm-9pm)
+    # - cron: '*/30 0-7,11-12 * * *'  # 20 times
+    # At minute 30 past every hour from 13 through 23. (9pm-8am)
+    # - cron: '30 13-23 * * *'        # 11 times
+
+    ## totally 49 runs per day, 1470 minutes per month
+    ## limits: 2000 minutes per month for private repo (73.5%)
+
+
+concurrency:
+  group: check-lecture
+  cancel-in-progress: true
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      # Checks-out repo
+      - uses: actions/checkout@v6
+
+      # Set up Node
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      
+      # 核心步骤：恢复上一次的 Cookie 缓存, 以及
+      - name: Restore Session Cookie
+        id: cache-cookie-restore
+        uses: actions/cache/restore@v5
+        with:
+          key: check-lecture-cache-${{ github.run_id }}
+          restore-keys: check-lecture-cache
+          # 恢复时，如果找不到精确匹配，就找前缀为 check-lecture-cache 的最新缓存
+          path: |
+            ./check-lectures/session_cookies.json
+            ./check-lectures/humanity_lectures.json
+            ./check-lectures/science_lectures.json
+      
+      # Install dependencies and run
+      - name: Run core scripts
+        run: |
+          cd check-lectures
+          npm install axios axios-cookiejar-support sharp tesseract.js tough-cookie @thednp/domparser
+          node main.ts
+        env:
+          USERNAME: ${{ secrets.SEP_USERNAME }}
+          PASSWORD: ${{ secrets.SEP_PASSWORD }}
+          API_KEY: ${{ secrets.SERVER_CHAN_KEY }}
+
+      # 核心步骤：保存当前的 Cookie 缓存
+      - name: Restore Session Cookie
+        if: always()
+        id: cache-cookie-save
+        uses: actions/cache/save@v5
+        with:
+          # GitHub Actions 的 Cache 是不可变的（Immutable）
+          # 一旦某个 key 写入成功，它就永远不能被覆盖或更新
+          key: check-lecture-cache-${{ github.run_id }}
+          path: |
+            ./check-lectures/session_cookies.json
+            ./check-lectures/humanity_lectures.json
+            ./check-lectures/science_lectures.json
