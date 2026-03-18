@@ -1,11 +1,30 @@
 import { DomParser } from "@thednp/domparser";
 
-
 export interface Lecture {
   department: string;
   topic: string;
   name: string;
   date: string;
+}
+
+export interface ListLecture {
+  seriesName: string;
+  lectureName: string;
+  creditHours: string;
+  department: string;
+  targetedObjects: string;
+  lectureTime: string; // "2026-03-25 18:30-20:30"
+  lecturer: string;
+  appointmentRequired: boolean;
+  detailUrl: string;
+}
+
+export interface DetailLecture {
+  mainVenue: string;
+  venueOfParallelSessions: string;
+  startingTime: string; // "2026/03/25 20:30:00"
+  timeOfEnding: string;
+  lectureIntroduction: string;
 }
 
 type FetchLectures =
@@ -49,14 +68,20 @@ export function parse_lectures(html: string): FetchLectures {
   return { success: true, data: content, length: statistic };
 }
 
-
 /** If any lectures are added
  * - return lecture list is there is any, and append to history
  * - return null is there is not, and do nothing to history
- *  */
-export function find_new_lectures(history: Lecture[], lectures: Lecture[]): null | Lecture[] {
-  const old = new Set(history.map(l => `${l.department}-${l.topic}-${l.name}`));
-  const new_lec = lectures.filter((l) => !old.has(`${l.department}-${l.topic}-${l.name}`));
+ */
+export function find_new_lectures(
+  history: Lecture[],
+  lectures: Lecture[],
+): null | Lecture[] {
+  const old = new Set(
+    history.map((l) => `${l.department}-${l.topic}-${l.name}`),
+  );
+  const new_lec = lectures.filter((l) =>
+    !old.has(`${l.department}-${l.topic}-${l.name}`)
+  );
   if (new_lec.length === 0) {
     return null;
   }

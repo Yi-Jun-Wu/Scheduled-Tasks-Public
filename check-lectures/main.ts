@@ -1,31 +1,31 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { find_new_lectures, parse_lectures, type Lecture } from "./extract.ts";
+import { find_new_lectures, type Lecture, parse_lectures } from "./extract.ts";
 import { login_for_data } from "./login.ts";
 import { post_notification } from "./notification.ts";
 
 const LECTURE_FILE = {
   "humanity": "humanity_lectures.json",
   "science": "science_lectures.json",
-}
+};
 
 interface LectureRec {
-  data: Lecture[],
+  data: Lecture[];
   length: number;
 }
 
 type TaskResult =
   | { success: true; diff: false }
-  | { success: true; diff: true; lectures: Lecture[], length: number }
+  | { success: true; diff: true; lectures: Lecture[]; length: number }
   | { success: false; reason: string };
 async function task(type: "humanity" | "science"): Promise<TaskResult> {
   let history: LectureRec;
   try {
-    history = JSON.parse((await readFile(LECTURE_FILE[type])).toString())
+    history = JSON.parse((await readFile(LECTURE_FILE[type])).toString());
   } catch (_) {
     history = {
       data: [],
       length: 0,
-    }
+    };
   }
 
   let lectures: Lecture[];
@@ -33,7 +33,7 @@ async function task(type: "humanity" | "science"): Promise<TaskResult> {
   try {
     const html = await login_for_data(type);
     if (!html) {
-      return { success: false, reason: "Cannot fetch html" }
+      return { success: false, reason: "Cannot fetch html" };
     }
     const res = parse_lectures(html);
     if (!res.success) {
@@ -53,9 +53,13 @@ async function task(type: "humanity" | "science"): Promise<TaskResult> {
   const added_length = new_length - history.length;
   history.length = new_length;
   writeFile(LECTURE_FILE[type], JSON.stringify(history, null, 2));
-  return { success: true, diff: true, lectures: new_lectures ?? [], length: added_length };
+  return {
+    success: true,
+    diff: true,
+    lectures: new_lectures ?? [],
+    length: added_length,
+  };
 }
-
 
 async function main(type: "humanity" | "science" = "humanity") {
   const result = await task(type);

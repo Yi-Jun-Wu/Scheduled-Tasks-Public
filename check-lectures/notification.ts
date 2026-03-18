@@ -17,7 +17,11 @@ const TYPE = {
   "science": "科学前沿讲座",
 };
 
-export async function post_notification(lectures: Lecture[], length: number, type: "humanity" | "science") {
+export async function post_notification(
+  lectures: Lecture[],
+  length: number,
+  type: "humanity" | "science",
+) {
   const header = `${TYPE[type]}讲座更新提醒`;
   const description = [
     `## 新增了 ${length} 个${TYPE[type]}, 列出如下:`,

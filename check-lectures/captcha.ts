@@ -1,5 +1,5 @@
-import sharp from 'sharp';
-import Tesseract from 'tesseract.js';
+import sharp from "sharp";
+import Tesseract from "tesseract.js";
 
 /**
  * 识别验证码
@@ -27,7 +27,9 @@ export async function recognizeCaptcha(imageBuffer: Buffer): Promise<string> {
     const b = data[i * 3 + 2];
 
     // 将 RGB 降低一点精度进行分组 (除以 10 抹平细微色差)，避免相似但不同的背景色被分散
-    const key = `${Math.floor(r / 10)},${Math.floor(g / 10)},${Math.floor(b / 10)}`;
+    const key = `${Math.floor(r / 10)},${Math.floor(g / 10)},${
+      Math.floor(b / 10)
+    }`;
     const count = (colorCounts.get(key) || 0) + 1;
     colorCounts.set(key, count);
 
@@ -66,8 +68,8 @@ export async function recognizeCaptcha(imageBuffer: Buffer): Promise<string> {
     raw: {
       width: info.width,
       height: info.height,
-      channels: 1
-    }
+      channels: 1,
+    },
   })
     .median(3) // 再次中值滤波，此时是在黑白图上进行，专门用于吃掉细小的黑色干扰线
     .png()
@@ -79,7 +81,7 @@ export async function recognizeCaptcha(imageBuffer: Buffer): Promise<string> {
   console.log("正在调用 OCR 引擎识别...");
 
   // 2. OCR 识别
-  const result = await Tesseract.recognize(processedImageBuffer, 'eng', {
+  const result = await Tesseract.recognize(processedImageBuffer, "eng", {
     // logger: m => {}, // 屏蔽内部日志输出
     // 核心配置：白名单和页面分割模式
     // tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
@@ -96,7 +98,6 @@ export async function recognizeCaptcha(imageBuffer: Buffer): Promise<string> {
 
   return result.data.text.trim();
 }
-
 
 // import { readFile, writeFile } from 'fs/promises';
 // import { argv } from 'process';
