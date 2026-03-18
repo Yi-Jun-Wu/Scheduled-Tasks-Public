@@ -36,7 +36,7 @@ async function list_lectures(
   category: "humanity" | "science",
 ): Promise<ListLecture[]> {
   const ret: ListLecture[] = [];
-  const MAX_PAGES = 7; // 根据实际情况调整分页数量
+  const MAX_PAGES = 1; // 根据实际情况调整分页数量
   for (let page = 1; page <= MAX_PAGES; page++) {
     console.log(`正在抓取 ${category} 分类，第 ${page} 页...`);
     const lecture_list = await fetch_lecture_list(category, page === 1 ? undefined : page);
