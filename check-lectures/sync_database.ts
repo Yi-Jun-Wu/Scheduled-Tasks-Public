@@ -1,14 +1,33 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { fetch_url } from "./login.ts";
-import { type DetailLecture, type ListLecture } from "./extract.ts";
+import { fetch_lecture_list, fetch_url, login_for_data } from "./login.ts";
+import { DETAILED_LECTURE, parse_lecture_detail, parse_list_lectures, type DetailLecture, type ListLecture } from "./extract.ts";
 
-interface MergedLecture extends ListLecture, DetailLecture {
-  id: string; // 纯字母的唯一标识符
-  startTimestamp: number;
-  endTimestamp: number;
-  lastUpdatedAt: string;
+// 彻底独立、字段规范化、前端友好的最终存储结构
+export interface MergedLecture {
+  id: string;                 // 纯字母特征码 (例如: AJFNKQLB)
+  seriesName: string;         // 讲座系列
+  title: string;              // 讲座名称 (映射自 lectureName)
+  creditHours: string;        // 学时
+  department: string;         // 主办部门
+  targetAudience: string;     // 面向对象 (映射自 targetedObjects)
+  speaker: string;            // 主讲人 (映射自 lecturer)
+  isAppointmentRequired: boolean; // 是否需要预约
+  sourceUrl: string;          // 详情页地址 (映射自 detailUrl)
+
+  // 统一处理后的绝对时间 (解决原始数据格式混乱问题)
+  startTimestamp: number;     // 毫秒时间戳
+  endTimestamp: number;       // 毫秒时间戳
+  rawTimeStr: string;         // 保留原始时间字符串备用
+
+  // 详情信息 (初始可能为空)
+  mainVenue: string;          // 主会场
+  parallelVenue: string;      // 分会场 (映射自 venueOfParallelSessions)
+  introduction: string;       // 讲座简介
+
+  // 元数据
+  lastUpdatedAt: string;      // ISO 时间戳
 }
 
 // ================= 模拟网络请求函数 =================
@@ -16,54 +35,96 @@ interface MergedLecture extends ListLecture, DetailLecture {
 async function list_lectures(
   category: "humanity" | "science",
 ): Promise<ListLecture[]> {
-  return [];
+  const ret: ListLecture[] = [];
+  const MAX_PAGES = 7; // 根据实际情况调整分页数量
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    console.log(`正在抓取 ${category} 分类，第 ${page} 页...`);
+    const lecture_list = await fetch_lecture_list(category, page === 1 ? undefined : page);
+    if (!lecture_list) {
+      console.log(`⚠️ 第 ${page} 页数据抓取失败或无数据，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`);
+      return ret;
+    }
+    const parsedLectures = parse_list_lectures(lecture_list);
+    if (!parsedLectures || !(parsedLectures.length > 0)) {
+      console.log(`第 ${page} 页数据解析失败或无有效数据，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`);
+      return ret;
+    }
+    const oldestTime = parsedLectures.reduce((oldest, lec) => {
+      const timeStr = lec.lectureTime || '';
+      const { start } = parseLectureTimeSafe(timeStr);
+      return start > 0 && (oldest === 0 || start < oldest) ? start : oldest;
+    }, 0);
+    ret.push(...parsedLectures);
+    console.log(`抓取到 ${parsedLectures.length} 条数据, 最早的讲座时间: ${oldestTime > 0 ? new Date(oldestTime).toLocaleString() : '未知'}`);
+    if (oldestTime < Date.now() - 20 * 24 * 60 * 60 * 1000) {
+      console.log(`检测到数据时间较旧，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`);
+      return ret;
+    }
+  }
+  console.log(`达到分页上限，停止抓取。共抓取到 ${ret.length} 条数据。`);
+  return ret;
 }
 async function lecture_detail(url: string): Promise<DetailLecture> {
-  const content = fetch_url(url);
-  return {
-    mainVenue: "",
-    venueOfParallelSessions: "",
-    startingTime: "",
-    timeOfEnding: "",
-    lectureIntroduction: "",
-  };
+  const content = await fetch_url(url);
+  // success guard
+  if (!content || !content.includes("查看讲座详情")) {
+    // retry once after 2 second
+    console.warn(`首次请求详情页失败，2秒后重试 URL: ${url}`);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const retryContent = await fetch_url(url);
+    if (!retryContent || !retryContent.includes("查看讲座详情")) {
+      console.error(`重试后仍然无法获取有效内容，返回默认详情 URL: ${url}`);
+      return { ...DETAILED_LECTURE, lectureIntroduction: `详情页访问失败，URL: ${url}` };
+    }
+    return parse_lecture_detail(retryContent) ?? DETAILED_LECTURE;
+  }
+  return parse_lecture_detail(content) ?? DETAILED_LECTURE;
 }
 
 // ================= 核心工具函数 =================
 
 /**
- * 解析非标准时间字符串，转换为标准 Unix 时间戳 (毫秒)
+ * 极度健壮的时间解析器，处理空字符串、脏格式
  */
-function parseLectureTime(timeStr: string): { start: number; end: number } {
-  // 示例: "2026-03-25 18:30-20:30"
-  const [datePart, timeRange] = timeStr.split(" ");
-  const [startStr, endStr] = timeRange.split("-");
+function parseLectureTimeSafe(timeStr: string): { start: number; end: number } {
+  const fallback = { start: 0, end: 0 };
+  if (!timeStr || timeStr.trim() === '') return fallback;
 
-  const startTimestamp = new Date(`${datePart}T${startStr}:00+08:00`).getTime();
-  const endTimestamp = new Date(`${datePart}T${endStr}:00+08:00`).getTime();
+  try {
+    const parts = timeStr.trim().split(' ');
+    if (parts.length < 2) return fallback;
 
-  return { start: startTimestamp, end: endTimestamp };
+    const datePart = parts[0];
+    const timeRange = parts[1];
+    const [startStr, endStr] = timeRange.split('-');
+
+    if (!startStr || !endStr) return fallback;
+
+    const startTimestamp = new Date(`${datePart}T${startStr}:00+08:00`).getTime();
+    const endTimestamp = new Date(`${datePart}T${endStr}:00+08:00`).getTime();
+
+    return {
+      start: isNaN(startTimestamp) ? 0 : startTimestamp,
+      end: isNaN(endTimestamp) ? 0 : endTimestamp
+    };
+  } catch (e) {
+    return fallback;
+  }
 }
-
 /**
  * 生成纯字母的特征码 (Letter-Only FourCC/ID)
- * 规则：基于 URL 和 重复索引 生成稳定的 Hash，并将 0-9 映射到 A-J，a-f 映射到 K-P
  */
 function generateLetterID(url: string, duplicateIndex: number): string {
-  const rawHash = createHash("md5").update(`${url}_${duplicateIndex}`).digest(
-    "hex",
-  );
-  let letterOnlyID = "";
+  const safeUrl = url || 'empty_url'; // 防止 url 为空
+  const rawHash = createHash('md5').update(`${safeUrl}_${duplicateIndex}`).digest('hex');
+  let letterOnlyID = '';
 
-  // 取前 8 位即可保证极低碰撞率
   for (let i = 0; i < 8; i++) {
     const charCode = rawHash.charCodeAt(i);
-    // 如果是数字 0-9 (48-57) -> 映射到 A-J (65-74)
     if (charCode >= 48 && charCode <= 57) {
-      letterOnlyID += String.fromCharCode(charCode + 17);
-    } // 如果是字母 a-f (97-102) -> 映射到 K-P (75-80)
-    else {
-      letterOnlyID += String.fromCharCode(charCode - 22);
+      letterOnlyID += String.fromCharCode(charCode + 17); // 0-9 映射到 A-J
+    } else {
+      letterOnlyID += String.fromCharCode(charCode - 22); // a-f 映射到 K-P
     }
   }
   return letterOnlyID;
@@ -81,138 +142,170 @@ async function ensureDir(dirPath: string) {
   }
 }
 
-async function syncCategory(category: "humanity" | "science") {
+async function syncCategory(category: 'humanity' | 'science') {
   console.log(`\n=== 开始同步分类: ${category} ===`);
-  const archiveDir = join(BASE_DIR, category, "archive");
+  const archiveDir = join(BASE_DIR, category, 'archive');
   await ensureDir(archiveDir);
 
-  // 1. 获取最新列表
   const rawList = await list_lectures(category);
-  if (rawList.length === 0) {
+  if (!rawList || rawList.length === 0) {
     console.log("未抓取到任何数据。");
     return;
   }
 
-  // 用于追踪同一次抓取中的重复 URL，以生成不同的纯字母 ID
   const urlOccurrenceCount: Record<string, number> = {};
-
-  // 按月份将抓取到的数据分组 (例如 "2026-03")
   const groupedNewLectures: Record<string, MergedLecture[]> = {};
 
-  // 2. 遍历并解析抓取到的讲座
+  // 1. 数据映射与分组 (Data Mapping & Grouping)
   for (const item of rawList) {
-    // 处理重复项分配：如果遇到相同 URL，索引递增
-    const duplicateIndex = urlOccurrenceCount[item.detailUrl] || 0;
-    urlOccurrenceCount[item.detailUrl] = duplicateIndex + 1;
+    const safeUrl = item.detailUrl || '';
+    const duplicateIndex = urlOccurrenceCount[safeUrl] || 0;
+    urlOccurrenceCount[safeUrl] = duplicateIndex + 1;
 
-    const letterID = generateLetterID(item.detailUrl, duplicateIndex);
-    const { start, end } = parseLectureTime(item.lectureTime);
+    const letterID = generateLetterID(safeUrl, duplicateIndex);
+    const { start, end } = parseLectureTimeSafe(item.lectureTime);
 
-    // 使用开始时间来决定它属于哪个月份的归档文件
-    const dateObj = new Date(start);
-    const monthKey = `${dateObj.getFullYear()}-${
-      String(dateObj.getMonth() + 1).padStart(2, "0")
-    }`; // "2026-03"
+    // 如果时间解析失败(start === 0)，放入 unknown.json 以免干扰正常日历
+    let monthKey = "unknown";
+    if (start > 0) {
+      const dateObj = new Date(start);
+      monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+    }
 
     if (!groupedNewLectures[monthKey]) {
       groupedNewLectures[monthKey] = [];
     }
 
+    // 规范化字段映射，使用 || '' 彻底杜绝 undefined 漏网之鱼
     groupedNewLectures[monthKey].push({
-      ...item,
       id: letterID,
+      seriesName: item.seriesName || '',
+      title: item.lectureName || '',
+      creditHours: item.creditHours || '',
+      department: item.department || '',
+      targetAudience: item.targetedObjects || '',
+      speaker: item.lecturer || '',
+      isAppointmentRequired: !!item.appointmentRequired,
+      sourceUrl: safeUrl,
       startTimestamp: start,
       endTimestamp: end,
-      lastUpdatedAt: new Date().toISOString(),
-      // 下面这些详情数据先占位，发现是新数据时再请求
-      mainVenue: "",
-      venueOfParallelSessions: "",
-      startingTime: "",
-      timeOfEnding: "",
-      lectureIntroduction: "",
+      rawTimeStr: item.lectureTime || '',
+      // 详情字段初始化为空
+      mainVenue: '',
+      parallelVenue: '',
+      introduction: '',
+      lastUpdatedAt: new Date().toISOString()
     });
   }
 
-  // 3. 读取本地归档并进行 Diff 更新
+  // 2. 差异比对与详情抓取 (Diff & Fetch Details)
   let hasAnyUpdate = false;
-  const allRecentLectures: MergedLecture[] = []; // 用于后续生成 latest.json
+  const allRecentLectures: MergedLecture[] = [];
   const SEVEN_DAYS_AGO = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const SEVEN_DAYS_AFTER = Date.now() + 14 * 24 * 60 * 60 * 1000;
 
   for (const [monthKey, newLectures] of Object.entries(groupedNewLectures)) {
     const archivePath = join(archiveDir, `${monthKey}.json`);
     let localArchive: MergedLecture[] = [];
 
     try {
-      const rawData = (await readFile(archivePath)).toString();
+      const rawData = await readFile(archivePath, 'utf-8');
       localArchive = JSON.parse(rawData);
     } catch (e) {
-      console.log(`创建全新的月份归档: ${monthKey}.json`);
+      console.log(`创建全新归档: ${monthKey}.json`);
     }
 
     let isMonthUpdated = false;
 
-    // 对比新数据和本地数据
-    for (const newLec of newLectures) {
-      const existingIndex = localArchive.findIndex((l) => l.id === newLec.id);
+    for (let newLec of newLectures) {
+      const existingIndex = localArchive.findIndex(l => l.id === newLec.id);
 
       if (existingIndex === -1) {
-        // 这是一个全新的讲座（或者是全新的重复项）！请求详情页
-        console.log(
-          `[新增] 发现新讲座 (ID: ${newLec.id}): ${newLec.lectureName}`,
-        );
-        const detail = await lecture_detail(newLec.detailUrl);
+        console.log(`[新增] 发现新讲座 (ID: ${newLec.id}): ${newLec.title}`);
 
-        const finalLecture = { ...newLec, ...detail };
-        localArchive.push(finalLecture);
+        // 只有 URL 不为空时才去请求详情
+        if (newLec.sourceUrl) {
+          try {
+            const detail = await lecture_detail(newLec.sourceUrl);
+            // 补充详情字段并规范化命名
+            newLec.mainVenue = detail.mainVenue || '';
+            newLec.parallelVenue = detail.venueOfParallelSessions || '';
+            newLec.introduction = detail.lectureIntroduction || '';
+            // 注: detail 里的 lectureName 等字段通常和 list 里一致，以 list 为准即可
+          } catch (e) {
+            console.error(`请求详情失败 URL: ${newLec.sourceUrl}`, e);
+          }
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        localArchive.push(newLec);
         isMonthUpdated = true;
         hasAnyUpdate = true;
-
-        // 为了避免被风控，请求详情后休眠 1 秒
-        await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
-        // 如果存在，可以选择性地检查状态是否改变 (比如讲座题目修改了)
-        // 这里为了简单，假设只要 ID 存在就不覆盖详情，如果需要可以加入 Diff 逻辑
+        // 讲座已存在，获取本地的旧记录
+        const existingLec = localArchive[existingIndex];
+        let isModified = false;
+
+        // 核心 Diff 逻辑：只对比列表页能拿到的高频变动字段
+        if (existingLec.title !== newLec.title ||
+          existingLec.startTimestamp !== newLec.startTimestamp ||
+          existingLec.endTimestamp !== newLec.endTimestamp ||
+          existingLec.isAppointmentRequired !== newLec.isAppointmentRequired) {
+
+          console.log(`[更新] 讲座信息发生变更 (ID: ${existingLec.id})`);
+          if (existingLec.title !== newLec.title) console.log(`  - 标题: ${existingLec.title} -> ${newLec.title}`);
+          if (existingLec.startTimestamp !== newLec.startTimestamp) console.log(`  - 时间变更!`);
+
+          // 覆盖旧字段
+          existingLec.title = newLec.title || existingLec.title;
+          existingLec.startTimestamp = newLec.startTimestamp || existingLec.startTimestamp;
+          existingLec.endTimestamp = newLec.endTimestamp || existingLec.endTimestamp;
+          existingLec.rawTimeStr = newLec.rawTimeStr || existingLec.rawTimeStr;
+          existingLec.isAppointmentRequired = newLec.isAppointmentRequired || existingLec.isAppointmentRequired;
+
+          // 顺手覆盖其他列表层面的非关键信息（防止微调）
+          existingLec.speaker = newLec.speaker || existingLec.speaker;
+          existingLec.department = newLec.department || existingLec.department;
+          existingLec.targetAudience = newLec.targetAudience || existingLec.targetAudience;
+          existingLec.creditHours = newLec.creditHours || existingLec.creditHours;
+
+          // 刷新最后更新时间，前端日历可以据此显示一个 "Updated" 的小角标
+          existingLec.lastUpdatedAt = new Date().toISOString();
+
+          isModified = true;
+        }
+
+        // 如果发生了修改，告诉外层系统需要保存文件
+        if (isModified) {
+          isMonthUpdated = true;
+          hasAnyUpdate = true;
+        }
       }
     }
 
-    // 保存更新后的本月归档
     if (isMonthUpdated) {
-      await writeFile(
-        archivePath,
-        JSON.stringify(localArchive, null, 2),
-        "utf-8",
-      );
+      await writeFile(archivePath, JSON.stringify(localArchive, null, 2), 'utf-8');
     }
 
-    // 收集热数据：只要讲座时间在 7 天前到现在、或未来，就加入
-    const recentInThisMonth = localArchive.filter((l) =>
-      l.startTimestamp >= SEVEN_DAYS_AGO
+    // 热数据收集：过滤掉时间异常(0)的，且只保留最近及未来的数据
+    const recentInThisMonth = localArchive.filter(l =>
+      l.startTimestamp > 0 && l.startTimestamp >= SEVEN_DAYS_AGO && l.startTimestamp <= SEVEN_DAYS_AFTER
     );
     allRecentLectures.push(...recentInThisMonth);
   }
 
-  // 4. 生成给网页用的热数据 (latest.json)
+  // 3. 产出网页专用热数据 (Export Hot Data)
   if (hasAnyUpdate) {
-    // 按时间排序，方便前端渲染日历
     allRecentLectures.sort((a, b) => a.startTimestamp - b.startTimestamp);
+    const latestPath = join(BASE_DIR, category, 'latest.json');
 
-    const latestPath = join(BASE_DIR, category, "latest.json");
-    await writeFile(
-      latestPath,
-      JSON.stringify(
-        {
-          generatedAt: new Date().toISOString(),
-          total: allRecentLectures.length,
-          lectures: allRecentLectures,
-        },
-        null,
-        2,
-      ),
-    );
+    await writeFile(latestPath, JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      total: allRecentLectures.length,
+      lectures: allRecentLectures
+    }, null, 2), 'utf-8');
 
-    console.log(
-      `✅ ${category} 数据更新完毕，已生成最新的 latest.json，包含 ${allRecentLectures.length} 条近期记录。`,
-    );
+    console.log(`✅ ${category} 数据更新完毕，最新 latest.json 包含 ${allRecentLectures.length} 条记录。`);
   } else {
     console.log(`无新数据，${category} 归档保持不变。`);
   }
@@ -221,7 +314,7 @@ async function syncCategory(category: "humanity" | "science") {
 // ================= 执行入口 =================
 async function main() {
   try {
-    await syncCategory("humanity");
+    // await syncCategory("humanity");
     await syncCategory("science");
     console.log("\n🎉 所有讲座数据同步流程执行完毕！");
   } catch (err) {
@@ -230,4 +323,4 @@ async function main() {
   }
 }
 
-main();
+await main();

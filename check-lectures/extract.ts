@@ -1,4 +1,5 @@
 import { DomParser } from "@thednp/domparser";
+// import { readFile } from "node:fs/promises";
 
 export interface Lecture {
   department: string;
@@ -18,14 +19,40 @@ export interface ListLecture {
   appointmentRequired: boolean;
   detailUrl: string;
 }
+export const LIST_LECTURE: ListLecture = {
+  seriesName: "",
+  lectureName: "",
+  creditHours: "",
+  department: "",
+  targetedObjects: "",
+  lectureTime: "",
+  lecturer: "",
+  appointmentRequired: false,
+  detailUrl: ""
+};
 
 export interface DetailLecture {
+  lectureName: string;
+  creditHours: string;
+  department: string;
+  targetedObjects: string;
   mainVenue: string;
   venueOfParallelSessions: string;
   startingTime: string; // "2026/03/25 20:30:00"
   timeOfEnding: string;
   lectureIntroduction: string;
 }
+export const DETAILED_LECTURE: DetailLecture = {
+  lectureName: "",
+  creditHours: "",
+  department: "",
+  targetedObjects: "",
+  mainVenue: "",
+  venueOfParallelSessions: "",
+  startingTime: "",
+  timeOfEnding: "",
+  lectureIntroduction: ""
+};
 
 type FetchLectures =
   | { success: true; data: Lecture[]; length: number }
@@ -68,6 +95,97 @@ export function parse_lectures(html: string): FetchLectures {
   return { success: true, data: content, length: statistic };
 }
 
+const appointment = [
+  "报名",
+  "预约已经结束",
+  "预约已结束",
+  "已经预约过",
+  "已预约过",
+];
+
+export function parse_list_lectures(html: string): ListLecture[] | null {
+  const parser = DomParser();
+  const doc = parser.parseFromString(html).root;
+  const table = doc
+    .querySelector("table")
+    ?.querySelector("tbody")
+    ?.querySelectorAll("tr");
+  if (table === undefined) {
+    return null;
+  }
+  return table.map((tr) => {
+    const cells = tr.children.map((x) =>
+      x.textContent.replace(/(\s|&nbsp;)+/g, " ").trim()
+    );
+    const url = tr.querySelectorAll("a")
+      .filter(x => x.textContent.trim() === "查看详情")[0]
+      ?.attributes.get("href")
+      ?? tr.querySelectorAll("a")
+        .map(x => x.attributes.get("href"))
+        .filter(x => x !== undefined)[0];
+
+    // console.log(cells[7]);
+    const ret: ListLecture = {
+      seriesName: cells[0] ?? "",
+      lectureName: cells[1] ?? "",
+      creditHours: cells[2] ?? "",
+      lectureTime: cells[3] ?? "",
+      targetedObjects: cells[4] ?? "",
+      lecturer: cells[5] ?? "",
+      department: cells[6] ?? "",
+      appointmentRequired: appointment.some(x => cells[7].includes(x)),
+      detailUrl: url ?? "",
+    };
+    return ret;
+  });
+}
+
+export function parse_lecture_detail(html: string): DetailLecture | null {
+  if (!html.includes("查看讲座详情")) return null;
+  const parser = DomParser();
+  const doc = parser.parseFromString(html).root;
+  const table = doc.querySelector("table")?.querySelectorAll("td");
+  if (!table) return null;
+  const ret: DetailLecture = {
+    lectureName: "",
+    creditHours: "",
+    department: "",
+    targetedObjects: "",
+    mainVenue: "",
+    venueOfParallelSessions: "",
+    startingTime: "",
+    timeOfEnding: "",
+    lectureIntroduction: ""
+  };
+  table.forEach(t => {
+    const [k, v] = t.textContent.trim().split("：");
+    switch (k) {
+      case "讲座名称":
+        return ret.lectureName = v;
+      case "学时":
+        return ret.creditHours = v;
+      case "部门":
+        return ret.department = v;
+      case "面向对象":
+        return ret.targetedObjects = v;
+      case "开始时间":
+        return ret.startingTime = v;
+      case "结束时间":
+        return ret.timeOfEnding = v;
+      case "主会场地点":
+        return ret.mainVenue = v;
+      case "分会场地点":
+        return ret.venueOfParallelSessions = v;
+      case "讲座介绍":
+        return;
+      default:
+        ret.lectureIntroduction += t.textContent.trim() + "\n";
+    }
+  });
+  ret.lectureIntroduction = ret.lectureIntroduction.trim();
+  return ret;
+}
+
 /** If any lectures are added
  * - return lecture list is there is any, and append to history
  * - return null is there is not, and do nothing to history
@@ -89,3 +207,6 @@ export function find_new_lectures(
   history.splice(0, 0, ...new_lec);
   return new_lec;
 }
+
+// console.log(parse_list_lectures((await readFile("./dist/humanityLecture.html")).toString()))
+// console.log(parse_lecture_detail((await readFile("./dist/humanityView.html")).toString()))

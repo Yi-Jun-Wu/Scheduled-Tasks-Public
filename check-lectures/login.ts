@@ -77,6 +77,7 @@ function encryptPassword(pwd: string, pubKeyBase64: string): string {
 }
 
 let global_client: AxiosInstance | null = null;
+let currentSubsystemOrigin = '';
 
 // // 封装一个命令行的交互输入函数
 // async function askQuestion(query: string): Promise<string> {
@@ -90,6 +91,8 @@ let global_client: AxiosInstance | null = null;
 // }
 
 // === 主流程 ===
+
+export const fetch_lecture_list = login_for_data;
 
 // 自动登录, 并获取数据
 export async function login_for_data(
@@ -139,9 +142,10 @@ export async function login_for_data(
     const testRes = await client.get(TARGET_URL[type], { params });
 
     if (!is_invalid(testRes.data)) {
-      console.log("✅ Session 仍然有效，直接获取到讲座列表数据！");
+      // console.log("✅ Session 仍然有效，直接获取到讲座列表数据！");
       // 这里可以继续执行你的讲座检测与预约逻辑
       global_client = client;
+      currentSubsystemOrigin = new URL(testRes.config.url!).origin; // 保存到模块变量
       return testRes.data;
     } else {
       console.log("⚠️ Session 已失效，准备执行完整登录流程...");
@@ -259,6 +263,9 @@ export async function login_for_data(
         break; // 成功则跳出整个外层重试循环
       }
     }
+    if(!loginSuccess){
+      throw new Error("经过多次尝试，仍然无法登录。");
+    }
 
     console.log("-> 步骤 3: 访问 businessMenu 提取讲座系统入口路径...");
     const resMenu = await client.get("https://sep.ucas.ac.cn/businessMenu");
@@ -305,6 +312,7 @@ export async function login_for_data(
 
       // 这里可以继续执行你的讲座检测与预约逻辑
       global_client = client;
+      currentSubsystemOrigin = new URL(finalUrl).origin; // 保存到模块变量
       return finalRes.data;
     } else {
       console.error(
@@ -322,6 +330,10 @@ export async function fetch_url(url: string, params?: any): Promise<string> {
   }
   if (!global_client) {
     throw new Error("Could not login to SEP!");
+  }
+  // turn /portal/site/xxx into https://xkxt.ucas.ac.cn:8843/portal/site/xxx
+  if (url.startsWith("/")) {
+    url = currentSubsystemOrigin + url;
   }
   const response = params
     ? global_client.get(url, { params })
