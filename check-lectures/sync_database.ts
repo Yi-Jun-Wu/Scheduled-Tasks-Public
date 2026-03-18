@@ -4,6 +4,13 @@ import { createHash } from "node:crypto";
 import { fetch_lecture_list, fetch_url, login_for_data } from "./login.ts";
 import { DETAILED_LECTURE, parse_lecture_detail, parse_list_lectures, type DetailLecture, type ListLecture } from "./extract.ts";
 
+const MAX_PAGE = 10; // 根据实际情况调整分页数量
+const MAX_UPDATED_LECTURES = 30; // 热数据限制，防止一次性更新过多
+const RECENT_DAYS_RANGE = 7; // 最近时间范围，单位：天
+const FUTURE_DAYS_RANGE = 14; // 未来时间范围，单位：天
+const HISTORICAL_DATA_CUTOFF_DAYS = 20; // 历史数据截止线，超过这个时间的讲座不再继续抓取
+
+
 // 彻底独立、字段规范化、前端友好的最终存储结构
 export interface MergedLecture {
   id: string;                 // 纯字母特征码 (例如: AJFNKQLB)
@@ -36,8 +43,7 @@ async function list_lectures(
   category: "humanity" | "science",
 ): Promise<ListLecture[]> {
   const ret: ListLecture[] = [];
-  const MAX_PAGES = 5; // 根据实际情况调整分页数量
-  for (let page = 1; page <= MAX_PAGES; page++) {
+  for (let page = 1; page <= MAX_PAGE; page++) {
     console.log(`正在抓取 ${category} 分类，第 ${page} 页...`);
     const lecture_list = await fetch_lecture_list(category, page === 1 ? undefined : page);
     if (!lecture_list) {
@@ -56,7 +62,7 @@ async function list_lectures(
     }, 0);
     ret.push(...parsedLectures);
     console.log(`抓取到 ${parsedLectures.length} 条数据, 最早的讲座时间: ${oldestTime > 0 ? new Date(oldestTime).toLocaleString() : '未知'}`);
-    if (oldestTime < Date.now() - 20 * 24 * 60 * 60 * 1000) {
+    if (oldestTime < Date.now() - HISTORICAL_DATA_CUTOFF_DAYS * 24 * 60 * 60 * 1000) {
       console.log(`检测到数据时间较旧，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`);
       return ret;
     }
@@ -68,9 +74,9 @@ async function lecture_detail(url: string): Promise<DetailLecture> {
   const content = await fetch_url(url);
   // success guard
   if (!content || !content.includes("查看讲座详情")) {
-    // retry once after 2 second
-    console.warn(`首次请求详情页失败，2秒后重试 URL: ${url}`);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // retry once after 5 second
+    console.warn(`首次请求详情页失败，5秒后重试 URL: ${url}`);
+    await new Promise(resolve => setTimeout(resolve, 5000));
     const retryContent = await fetch_url(url);
     if (!retryContent || !retryContent.includes("查看讲座详情")) {
       console.error(`重试后仍然无法获取有效内容，返回默认详情 URL: ${url}`);
@@ -201,8 +207,10 @@ async function syncCategory(category: 'humanity' | 'science') {
   // 2. 差异比对与详情抓取 (Diff & Fetch Details)
   let hasAnyUpdate = false;
   const allRecentLectures: MergedLecture[] = [];
-  const SEVEN_DAYS_AGO = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const SEVEN_DAYS_AFTER = Date.now() + 14 * 24 * 60 * 60 * 1000;
+  const RECENT_DAYS = Date.now() - RECENT_DAYS_RANGE * 24 * 60 * 60 * 1000;
+  const FUTURE_DAYS = Date.now() + FUTURE_DAYS_RANGE * 24 * 60 * 60 * 1000;
+
+  let updateCount = 0;
 
   for (const [monthKey, newLectures] of Object.entries(groupedNewLectures)) {
     const archivePath = join(archiveDir, `${monthKey}.json`);
@@ -219,8 +227,13 @@ async function syncCategory(category: 'humanity' | 'science') {
 
     for (let newLec of newLectures) {
       const existingIndex = localArchive.findIndex(l => l.id === newLec.id);
+      const needFetchDetail = existingIndex === -1 || localArchive[existingIndex].introduction === '';
 
-      if (existingIndex === -1) {
+      if (updateCount >= MAX_UPDATED_LECTURES) {
+        console.warn(`已达到本次更新的讲座数量上限 (${MAX_UPDATED_LECTURES})，剩余讲座将暂不更新详情。`);
+        break;
+      } else if (needFetchDetail) {
+        updateCount++;
         console.log(`[新增] 发现新讲座 (ID: ${newLec.id}): ${newLec.title}`);
 
         // 只有 URL 不为空时才去请求详情
@@ -236,9 +249,17 @@ async function syncCategory(category: 'humanity' | 'science') {
             console.error(`请求详情失败 URL: ${newLec.sourceUrl}`, e);
           }
           await new Promise(resolve => setTimeout(resolve, 1000));
+          if (existingIndex !== -1 && newLec.introduction === '') {
+            // cannot fetch detail in both attempts
+            console.error(`无法获取讲座详情: ${newLec.sourceUrl}`);
+            // fill in a placeholder to avoid repeated failed attempts
+            newLec.introduction = `讲座详情获取失败，URL: ${newLec.sourceUrl}`;
+          }
         }
 
-        localArchive.push(newLec);
+        if (existingIndex === -1) localArchive.push(newLec);
+        else localArchive[existingIndex] = newLec; // 覆盖旧记录（包含详情）
+
         isMonthUpdated = true;
         hasAnyUpdate = true;
       } else {
@@ -289,7 +310,7 @@ async function syncCategory(category: 'humanity' | 'science') {
 
     // 热数据收集：过滤掉时间异常(0)的，且只保留最近及未来的数据
     const recentInThisMonth = localArchive.filter(l =>
-      l.startTimestamp > 0 && l.startTimestamp >= SEVEN_DAYS_AGO && l.startTimestamp <= SEVEN_DAYS_AFTER
+      l.startTimestamp > 0 && l.startTimestamp >= RECENT_DAYS && l.startTimestamp <= FUTURE_DAYS
     );
     allRecentLectures.push(...recentInThisMonth);
   }
