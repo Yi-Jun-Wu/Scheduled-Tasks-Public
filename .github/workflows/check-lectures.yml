@@ -7,7 +7,8 @@ on:
       sync_database:
         description: 'Whether to sync the database with the latest lecture info. (Default: false)'
         required: false
-        default: 'false'
+        type: boolean
+        default: false
   
   # schedule:
     # see: https://crontab.guru/ for corn format.
@@ -86,7 +87,7 @@ jobs:
       # 其他步骤：发送通知、更新数据库等，可以在这里添加
       
       - name: Sync Database Checkout
-        if: ${{ github.event.inputs.sync_database == 'true' }}
+        if: ${{ github.event.inputs.sync_database == true }}
         uses: actions/checkout@v6
         with:
           repository: Yi-Jun-Wu/UCAS-Lectures
@@ -95,7 +96,7 @@ jobs:
           path: check-lectures/lectures
 
       - name: Sync Database
-        if: ${{ github.event.inputs.sync_database == 'true' }}
+        if: ${{ github.event.inputs.sync_database == true }}
         run: |
           cd check-lectures
           node sync_database.ts
@@ -104,7 +105,7 @@ jobs:
           PASSWORD: ${{ secrets.SEP_PASSWORD }}
         
       - name: Sync Database Commit and Push
-        if: ${{ github.event.inputs.sync_database == 'true' }}
+        if: ${{ github.event.inputs.sync_database == true }}
         run: |
           cd check-lectures/lectures
           git config user.name "GitHub Actions Bot"
