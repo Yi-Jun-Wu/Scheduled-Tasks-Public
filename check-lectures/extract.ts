@@ -65,7 +65,7 @@ export function parse_lectures(html: string): FetchLectures {
   const parser = DomParser();
 
   // parse the source
-  const doc = parser.parseFromString(html).root;
+  const doc = parser.parseFromString(fix_html(html)).root;
 
   const info = doc.querySelector("bn-info")?.textContent ?? "";
   let statistic = parseInt(info?.trim().slice(1));
@@ -103,9 +103,14 @@ const appointment = [
   "已预约过",
 ];
 
+const no_appointment = [
+  "无需预约",
+  "此讲座无需报名",
+];
+
 export function parse_list_lectures(html: string): ListLecture[] | null {
   const parser = DomParser();
-  const doc = parser.parseFromString(html).root;
+  const doc = parser.parseFromString(fix_html(html)).root;
   const table = doc
     .querySelector("table")
     ?.querySelector("tbody")
@@ -133,17 +138,22 @@ export function parse_list_lectures(html: string): ListLecture[] | null {
       targetedObjects: cells[4] ?? "",
       lecturer: cells[5] ?? "",
       department: cells[6] ?? "",
-      appointmentRequired: appointment.some(x => cells[7].includes(x)),
+      appointmentRequired: appointment.some(x => cells[7].includes(x)) && !no_appointment.some(x => cells[7].includes(x)),
       detailUrl: url ?? "",
     };
     return ret;
   });
 }
 
+function fix_html(html: string): string {
+  // Fix broken HTML (replace `<中文字符>` with `&lt;中文字符&gt;`)
+  return html.replace(/<([^<>]{0,20}[\u4e00-\u9fa5]+[^<>]{0,20})>/gu, "＜$1＞");
+}
+
 export function parse_lecture_detail(html: string): DetailLecture | null {
   if (!html.includes("查看讲座详情")) return null;
   const parser = DomParser();
-  const doc = parser.parseFromString(html).root;
+  const doc = parser.parseFromString(fix_html(html)).root;
   const table = doc.querySelector("table")?.querySelectorAll("td");
   if (!table) return null;
   const ret: DetailLecture = {

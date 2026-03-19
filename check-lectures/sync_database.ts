@@ -4,11 +4,12 @@ import { createHash } from "node:crypto";
 import { fetch_lecture_list, fetch_url, login_for_data } from "./login.ts";
 import { DETAILED_LECTURE, parse_lecture_detail, parse_list_lectures, type DetailLecture, type ListLecture } from "./extract.ts";
 
-const MAX_PAGE = 10; // 根据实际情况调整分页数量
-const MAX_UPDATED_LECTURES = 30; // 热数据限制，防止一次性更新过多
-const RECENT_DAYS_RANGE = 7; // 最近时间范围，单位：天
-const FUTURE_DAYS_RANGE = 14; // 未来时间范围，单位：天
-const HISTORICAL_DATA_CUTOFF_DAYS = 20; // 历史数据截止线，超过这个时间的讲座不再继续抓取
+const STARTING_PAGE = 1; // 根据实际情况调整分页数量 (1)
+const MAX_PAGE = 10; // 根据实际情况调整分页数量 (10)
+const MAX_UPDATED_LECTURES = 30; // 热数据限制，防止一次性更新过多 (30)
+const RECENT_DAYS_RANGE = 7; // 最近时间范围，单位：天 (7)
+const FUTURE_DAYS_RANGE = 14; // 未来时间范围，单位：天 (14)
+const HISTORICAL_DATA_CUTOFF_DAYS = 20; // 历史数据截止线，超过这个时间的讲座不再继续抓取 (20)
 
 
 // 彻底独立、字段规范化、前端友好的最终存储结构
@@ -43,7 +44,7 @@ async function list_lectures(
   category: "humanity" | "science",
 ): Promise<ListLecture[]> {
   const ret: ListLecture[] = [];
-  for (let page = 1; page <= MAX_PAGE; page++) {
+  for (let page = STARTING_PAGE; page <= MAX_PAGE; page++) {
     console.log(`正在抓取 ${category} 分类，第 ${page} 页...`);
     const lecture_list = await fetch_lecture_list(category, page === 1 ? undefined : page);
     if (!lecture_list) {
@@ -253,7 +254,7 @@ async function syncCategory(category: 'humanity' | 'science') {
             // cannot fetch detail in both attempts
             console.error(`无法获取讲座详情: ${newLec.sourceUrl}`);
             // fill in a placeholder to avoid repeated failed attempts
-            newLec.introduction = `讲座详情获取失败，URL: ${newLec.sourceUrl}`;
+            newLec.introduction = `[ERROR] 讲座详情获取失败，URL: ${newLec.sourceUrl}`;
           }
         }
 
@@ -282,7 +283,7 @@ async function syncCategory(category: 'humanity' | 'science') {
           existingLec.startTimestamp = newLec.startTimestamp || existingLec.startTimestamp;
           existingLec.endTimestamp = newLec.endTimestamp || existingLec.endTimestamp;
           existingLec.rawTimeStr = newLec.rawTimeStr || existingLec.rawTimeStr;
-          existingLec.isAppointmentRequired = newLec.isAppointmentRequired || existingLec.isAppointmentRequired;
+          existingLec.isAppointmentRequired = newLec.isAppointmentRequired;
 
           // 顺手覆盖其他列表层面的非关键信息（防止微调）
           existingLec.speaker = newLec.speaker || existingLec.speaker;

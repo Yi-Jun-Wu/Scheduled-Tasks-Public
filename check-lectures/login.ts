@@ -22,8 +22,8 @@ const TARGET_NAME = {
 
 // ⚠️ 生产环境中请保存入 Secrets, 不得使用明文
 // 从环境变量读取账号密码
-const USERNAME = process.env.USERNAME!;
-const PASSWORD = process.env.PASSWORD!;
+const USERNAME = process.env.SEP_USERNAME || process.env.USERNAME!;
+const PASSWORD = process.env.SEP_PASSWORD! || process.env.PASSWORD!;
 if (USERNAME === undefined || PASSWORD === undefined) {
   console.error("❌ 致命错误: 未检测到 USERNAME 或 PASSWORD 环境变量！");
   console.error(
@@ -247,7 +247,10 @@ export async function login_for_data(
       ) {
         console.log(
           `❌ 第 ${attempt} 次登录失败。可能原因：密码错误、验证码识别错误或被风控。`,
+          loginRes.data,
+          loginRes.headers
         );
+        throw new Error(`登录失败，返回 URL: ${finalUrl}`);
 
         if (attempt === MAX_LOGIN_ATTEMPTS) {
           throw new Error(

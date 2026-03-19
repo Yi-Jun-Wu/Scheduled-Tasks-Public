@@ -66,8 +66,8 @@ jobs:
           npm install axios axios-cookiejar-support sharp tesseract.js tough-cookie @thednp/domparser
           node main.ts
         env:
-          USERNAME: ${{ secrets.SEP_USERNAME }}
-          PASSWORD: ${{ secrets.SEP_PASSWORD }}
+          SEP_USERNAME: ${{ secrets.SEP_USERNAME }}
+          SEP_PASSWORD: ${{ secrets.SEP_PASSWORD }}
           API_KEY: ${{ secrets.SERVER_CHAN_KEY }}
 
       # 核心步骤：保存当前的 Cookie 缓存
@@ -101,9 +101,9 @@ jobs:
           cd check-lectures
           node sync_database.ts
         env:
-          USERNAME: ${{ secrets.SEP_USERNAME }}
-          PASSWORD: ${{ secrets.SEP_PASSWORD }}
-        
+          SEP_USERNAME: ${{ secrets.SEP_USERNAME }}
+          SEP_PASSWORD: ${{ secrets.SEP_PASSWORD }}
+
       - name: Sync Database Commit and Push
         if: ${{ github.event.inputs.sync_database == 'true' }}
         run: |
