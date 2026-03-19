@@ -31,8 +31,8 @@ export async function post_notification(
       `时间: ${x.date}`,
       `组织: ${x.department}-${x.topic}`,
     ]),
-  ].flat(2).join("\n\n");
-  const brief = `${TYPE[type]}讲座更新(${length}个): ${lectures[0].name}`;
+  ].flat(2).filter(Boolean).join("\n\n");
+  const brief = `${TYPE[type]}讲座更新(${length}个): ${lectures[0]?.name}`;
 
   const params = {
     text: header,
