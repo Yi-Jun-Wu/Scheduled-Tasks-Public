@@ -48,6 +48,13 @@ async function task(type: "humanity" | "science"): Promise<TaskResult> {
   const new_lectures = find_new_lectures(history.data, lectures);
   if (!(new_length > 0)) new_length = history.length;
   if (!new_lectures && new_length === history.length) {
+    // todo: TEST
+    return { success: true, diff: true, lectures: [{
+      department: "测试数据",
+      topic: type,
+      name: "测试新讲座",
+      date: new Date().toString(),
+    }], length: 1 };
     return { success: true, diff: false };
   }
   const added_length = new_length - history.length;
