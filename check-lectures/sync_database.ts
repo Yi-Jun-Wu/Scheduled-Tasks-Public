@@ -2,7 +2,13 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { fetch_lecture_list, fetch_url, login_for_data } from "./login.ts";
-import { DETAILED_LECTURE, parse_lecture_detail, parse_list_lectures, type DetailLecture, type ListLecture } from "./extract.ts";
+import {
+  DETAILED_LECTURE,
+  type DetailLecture,
+  type ListLecture,
+  parse_lecture_detail,
+  parse_list_lectures,
+} from "./extract.ts";
 
 const STARTING_PAGE = 1; // 根据实际情况调整分页数量 (1)
 const MAX_PAGE = 10; // 根据实际情况调整分页数量 (10)
@@ -11,31 +17,30 @@ const RECENT_DAYS_RANGE = 7; // 最近时间范围，单位：天 (7)
 const FUTURE_DAYS_RANGE = 14; // 未来时间范围，单位：天 (14)
 const HISTORICAL_DATA_CUTOFF_DAYS = 20; // 历史数据截止线，超过这个时间的讲座不再继续抓取 (20)
 
-
 // 彻底独立、字段规范化、前端友好的最终存储结构
 export interface MergedLecture {
-  id: string;                 // 纯字母特征码 (例如: AJFNKQLB)
-  seriesName: string;         // 讲座系列
-  title: string;              // 讲座名称 (映射自 lectureName)
-  creditHours: string;        // 学时
-  department: string;         // 主办部门
-  targetAudience: string;     // 面向对象 (映射自 targetedObjects)
-  speaker: string;            // 主讲人 (映射自 lecturer)
+  id: string; // 纯字母特征码 (例如: AJFNKQLB)
+  seriesName: string; // 讲座系列
+  title: string; // 讲座名称 (映射自 lectureName)
+  creditHours: string; // 学时
+  department: string; // 主办部门
+  targetAudience: string; // 面向对象 (映射自 targetedObjects)
+  speaker: string; // 主讲人 (映射自 lecturer)
   isAppointmentRequired: boolean; // 是否需要预约
-  sourceUrl: string;          // 详情页地址 (映射自 detailUrl)
+  sourceUrl: string; // 详情页地址 (映射自 detailUrl)
 
   // 统一处理后的绝对时间 (解决原始数据格式混乱问题)
-  startTimestamp: number;     // 毫秒时间戳
-  endTimestamp: number;       // 毫秒时间戳
-  rawTimeStr: string;         // 保留原始时间字符串备用
+  startTimestamp: number; // 毫秒时间戳
+  endTimestamp: number; // 毫秒时间戳
+  rawTimeStr: string; // 保留原始时间字符串备用
 
   // 详情信息 (初始可能为空)
-  mainVenue: string;          // 主会场
-  parallelVenue: string;      // 分会场 (映射自 venueOfParallelSessions)
-  introduction: string;       // 讲座简介
+  mainVenue: string; // 主会场
+  parallelVenue: string; // 分会场 (映射自 venueOfParallelSessions)
+  introduction: string; // 讲座简介
 
   // 元数据
-  lastUpdatedAt: string;      // ISO 时间戳
+  lastUpdatedAt: string; // ISO 时间戳
 }
 
 // ================= 模拟网络请求函数 =================
@@ -46,25 +51,41 @@ async function list_lectures(
   const ret: ListLecture[] = [];
   for (let page = STARTING_PAGE; page <= MAX_PAGE; page++) {
     console.log(`正在抓取 ${category} 分类，第 ${page} 页...`);
-    const lecture_list = await fetch_lecture_list(category, page === 1 ? undefined : page);
+    const lecture_list = await fetch_lecture_list(
+      category,
+      page === 1 ? undefined : page,
+    );
     if (!lecture_list) {
-      console.log(`⚠️ 第 ${page} 页数据抓取失败或无数据，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`);
+      console.log(
+        `⚠️ 第 ${page} 页数据抓取失败或无数据，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`,
+      );
       return ret;
     }
     const parsedLectures = parse_list_lectures(lecture_list);
     if (!parsedLectures || !(parsedLectures.length > 0)) {
-      console.log(`第 ${page} 页数据解析失败或无有效数据，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`);
+      console.log(
+        `第 ${page} 页数据解析失败或无有效数据，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`,
+      );
       return ret;
     }
     const oldestTime = parsedLectures.reduce((oldest, lec) => {
-      const timeStr = lec.lectureTime || '';
+      const timeStr = lec.lectureTime || "";
       const { start } = parseLectureTimeSafe(timeStr);
       return start > 0 && (oldest === 0 || start < oldest) ? start : oldest;
     }, 0);
     ret.push(...parsedLectures);
-    console.log(`抓取到 ${parsedLectures.length} 条数据, 最早的讲座时间: ${oldestTime > 0 ? new Date(oldestTime).toLocaleString() : '未知'}`);
-    if (oldestTime < Date.now() - HISTORICAL_DATA_CUTOFF_DAYS * 24 * 60 * 60 * 1000) {
-      console.log(`检测到数据时间较旧，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`);
+    console.log(
+      `抓取到 ${parsedLectures.length} 条数据, 最早的讲座时间: ${
+        oldestTime > 0 ? new Date(oldestTime).toLocaleString() : "未知"
+      }`,
+    );
+    if (
+      oldestTime <
+        Date.now() - HISTORICAL_DATA_CUTOFF_DAYS * 24 * 60 * 60 * 1000
+    ) {
+      console.log(
+        `检测到数据时间较旧，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`,
+      );
       return ret;
     }
   }
@@ -77,11 +98,14 @@ async function lecture_detail(url: string): Promise<DetailLecture> {
   if (!content || !content.includes("查看讲座详情")) {
     // retry once after 5 second
     console.warn(`首次请求详情页失败，5秒后重试 URL: ${url}`);
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     const retryContent = await fetch_url(url);
     if (!retryContent || !retryContent.includes("查看讲座详情")) {
       console.error(`重试后仍然无法获取有效内容，返回默认详情 URL: ${url}`);
-      return { ...DETAILED_LECTURE, lectureIntroduction: `详情页访问失败，URL: ${url}` };
+      return {
+        ...DETAILED_LECTURE,
+        lectureIntroduction: `详情页访问失败，URL: ${url}`,
+      };
     }
     return parse_lecture_detail(retryContent) ?? DETAILED_LECTURE;
   }
@@ -95,14 +119,14 @@ async function lecture_detail(url: string): Promise<DetailLecture> {
  */
 function parseLectureTimeSafe(timeStr: string): { start: number; end: number } {
   const fallback = { start: 0, end: 0 };
-  if (!timeStr || timeStr.trim() === '') return fallback;
+  if (!timeStr || timeStr.trim() === "") return fallback;
 
   try {
     const str = timeStr.trim();
-    let parts = str.split(' ');
+    let parts = str.split(" ");
     if (parts.length < 2) {
       // 尝试用中文空格分割
-      parts = str.split(/\p{Zs}|\n|\r|&nbsp;/u).filter(x => x?.length > 0);
+      parts = str.split(/\p{Zs}|\n|\r|&nbsp;/u).filter((x) => x?.length > 0);
     }
     if (parts.length < 2) {
       // 尝试用非字母数字的符号分割，极端容错
@@ -115,16 +139,17 @@ function parseLectureTimeSafe(timeStr: string): { start: number; end: number } {
 
     const datePart = parts[0];
     const timeRange = parts[1];
-    const [startStr, endStr] = timeRange.split('-');
+    const [startStr, endStr] = timeRange.split("-");
 
     if (!startStr || !endStr) return fallback;
 
-    const startTimestamp = new Date(`${datePart}T${startStr}:00+08:00`).getTime();
+    const startTimestamp = new Date(`${datePart}T${startStr}:00+08:00`)
+      .getTime();
     const endTimestamp = new Date(`${datePart}T${endStr}:00+08:00`).getTime();
 
     return {
       start: isNaN(startTimestamp) ? 0 : startTimestamp,
-      end: isNaN(endTimestamp) ? 0 : endTimestamp
+      end: isNaN(endTimestamp) ? 0 : endTimestamp,
     };
   } catch (e) {
     return fallback;
@@ -134,9 +159,10 @@ function parseLectureTimeSafe(timeStr: string): { start: number; end: number } {
  * 生成纯字母的特征码 (Letter-Only FourCC/ID)
  */
 function generateLetterID(url: string, duplicateIndex: number): string {
-  const safeUrl = url || 'empty_url'; // 防止 url 为空
-  const rawHash = createHash('md5').update(`${safeUrl}_${duplicateIndex}`).digest('hex');
-  let letterOnlyID = '';
+  const safeUrl = url || "empty_url"; // 防止 url 为空
+  const rawHash = createHash("md5").update(`${safeUrl}_${duplicateIndex}`)
+    .digest("hex");
+  let letterOnlyID = "";
 
   for (let i = 0; i < 8; i++) {
     const charCode = rawHash.charCodeAt(i);
@@ -161,9 +187,9 @@ async function ensureDir(dirPath: string) {
   }
 }
 
-async function syncCategory(category: 'humanity' | 'science') {
+async function syncCategory(category: "humanity" | "science") {
   console.log(`\n=== 开始同步分类: ${category} ===`);
-  const archiveDir = join(BASE_DIR, category, 'archive');
+  const archiveDir = join(BASE_DIR, category, "archive");
   await ensureDir(archiveDir);
 
   const rawList = await list_lectures(category);
@@ -177,7 +203,7 @@ async function syncCategory(category: 'humanity' | 'science') {
 
   // 1. 数据映射与分组 (Data Mapping & Grouping)
   for (const item of rawList) {
-    const safeUrl = item.detailUrl || '';
+    const safeUrl = item.detailUrl || "";
     const duplicateIndex = urlOccurrenceCount[safeUrl] || 0;
     urlOccurrenceCount[safeUrl] = duplicateIndex + 1;
 
@@ -188,7 +214,9 @@ async function syncCategory(category: 'humanity' | 'science') {
     let monthKey = "unknown";
     if (start > 0) {
       const dateObj = new Date(start);
-      monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+      monthKey = `${dateObj.getFullYear()}-${
+        String(dateObj.getMonth() + 1).padStart(2, "0")
+      }`;
     }
 
     if (!groupedNewLectures[monthKey]) {
@@ -198,22 +226,22 @@ async function syncCategory(category: 'humanity' | 'science') {
     // 规范化字段映射，使用 || '' 彻底杜绝 undefined 漏网之鱼
     groupedNewLectures[monthKey].push({
       id: letterID,
-      seriesName: item.seriesName || '',
-      title: item.lectureName || '',
-      creditHours: item.creditHours || '',
-      department: item.department || '',
-      targetAudience: item.targetedObjects || '',
-      speaker: item.lecturer || '',
+      seriesName: item.seriesName || "",
+      title: item.lectureName || "",
+      creditHours: item.creditHours || "",
+      department: item.department || "",
+      targetAudience: item.targetedObjects || "",
+      speaker: item.lecturer || "",
       isAppointmentRequired: !!item.appointmentRequired,
       sourceUrl: safeUrl,
       startTimestamp: start,
       endTimestamp: end,
-      rawTimeStr: item.lectureTime || '',
+      rawTimeStr: item.lectureTime || "",
       // 详情字段初始化为空
-      mainVenue: '',
-      parallelVenue: '',
-      introduction: '',
-      lastUpdatedAt: new Date().toISOString()
+      mainVenue: "",
+      parallelVenue: "",
+      introduction: "",
+      lastUpdatedAt: new Date().toISOString(),
     });
   }
 
@@ -230,7 +258,7 @@ async function syncCategory(category: 'humanity' | 'science') {
     let localArchive: MergedLecture[] = [];
 
     try {
-      const rawData = await readFile(archivePath, 'utf-8');
+      const rawData = await readFile(archivePath, "utf-8");
       localArchive = JSON.parse(rawData);
     } catch (e) {
       console.log(`创建全新归档: ${monthKey}.json`);
@@ -239,11 +267,14 @@ async function syncCategory(category: 'humanity' | 'science') {
     let isMonthUpdated = false;
 
     for (let newLec of newLectures) {
-      const existingIndex = localArchive.findIndex(l => l.id === newLec.id);
-      const needFetchDetail = existingIndex === -1 || localArchive[existingIndex].introduction === '';
+      const existingIndex = localArchive.findIndex((l) => l.id === newLec.id);
+      const needFetchDetail = existingIndex === -1 ||
+        localArchive[existingIndex].introduction === "";
 
       if (updateCount >= MAX_UPDATED_LECTURES) {
-        console.warn(`已达到本次更新的讲座数量上限 (${MAX_UPDATED_LECTURES})，剩余讲座将暂不更新详情。`);
+        console.warn(
+          `已达到本次更新的讲座数量上限 (${MAX_UPDATED_LECTURES})，剩余讲座将暂不更新详情。`,
+        );
         break;
       } else if (needFetchDetail) {
         updateCount++;
@@ -254,19 +285,20 @@ async function syncCategory(category: 'humanity' | 'science') {
           try {
             const detail = await lecture_detail(newLec.sourceUrl);
             // 补充详情字段并规范化命名
-            newLec.mainVenue = detail.mainVenue || '';
-            newLec.parallelVenue = detail.venueOfParallelSessions || '';
-            newLec.introduction = detail.lectureIntroduction || '';
+            newLec.mainVenue = detail.mainVenue || "";
+            newLec.parallelVenue = detail.venueOfParallelSessions || "";
+            newLec.introduction = detail.lectureIntroduction || "";
             // 注: detail 里的 lectureName 等字段通常和 list 里一致，以 list 为准即可
           } catch (e) {
             console.error(`请求详情失败 URL: ${newLec.sourceUrl}`, e);
           }
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          if (existingIndex !== -1 && newLec.introduction === '') {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          if (existingIndex !== -1 && newLec.introduction === "") {
             // cannot fetch detail in both attempts
             console.error(`无法获取讲座详情: ${newLec.sourceUrl}`);
             // fill in a placeholder to avoid repeated failed attempts
-            newLec.introduction = `[ERROR] 讲座详情获取失败，URL: ${newLec.sourceUrl}`;
+            newLec.introduction =
+              `[ERROR] 讲座详情获取失败，URL: ${newLec.sourceUrl}`;
           }
         }
 
@@ -281,27 +313,36 @@ async function syncCategory(category: 'humanity' | 'science') {
         let isModified = false;
 
         // 核心 Diff 逻辑：只对比列表页能拿到的高频变动字段
-        if (existingLec.title !== newLec.title ||
+        if (
+          existingLec.title !== newLec.title ||
           existingLec.startTimestamp !== newLec.startTimestamp ||
           existingLec.endTimestamp !== newLec.endTimestamp ||
-          existingLec.isAppointmentRequired !== newLec.isAppointmentRequired) {
-
+          existingLec.isAppointmentRequired !== newLec.isAppointmentRequired
+        ) {
           console.log(`[更新] 讲座信息发生变更 (ID: ${existingLec.id})`);
-          if (existingLec.title !== newLec.title) console.log(`  - 标题: ${existingLec.title} -> ${newLec.title}`);
-          if (existingLec.startTimestamp !== newLec.startTimestamp) console.log(`  - 时间变更!`);
+          if (existingLec.title !== newLec.title) {
+            console.log(`  - 标题: ${existingLec.title} -> ${newLec.title}`);
+          }
+          if (existingLec.startTimestamp !== newLec.startTimestamp) {
+            console.log(`  - 时间变更!`);
+          }
 
           // 覆盖旧字段
           existingLec.title = newLec.title || existingLec.title;
-          existingLec.startTimestamp = newLec.startTimestamp || existingLec.startTimestamp;
-          existingLec.endTimestamp = newLec.endTimestamp || existingLec.endTimestamp;
+          existingLec.startTimestamp = newLec.startTimestamp ||
+            existingLec.startTimestamp;
+          existingLec.endTimestamp = newLec.endTimestamp ||
+            existingLec.endTimestamp;
           existingLec.rawTimeStr = newLec.rawTimeStr || existingLec.rawTimeStr;
           existingLec.isAppointmentRequired = newLec.isAppointmentRequired;
 
           // 顺手覆盖其他列表层面的非关键信息（防止微调）
           existingLec.speaker = newLec.speaker || existingLec.speaker;
           existingLec.department = newLec.department || existingLec.department;
-          existingLec.targetAudience = newLec.targetAudience || existingLec.targetAudience;
-          existingLec.creditHours = newLec.creditHours || existingLec.creditHours;
+          existingLec.targetAudience = newLec.targetAudience ||
+            existingLec.targetAudience;
+          existingLec.creditHours = newLec.creditHours ||
+            existingLec.creditHours;
 
           // 刷新最后更新时间，前端日历可以据此显示一个 "Updated" 的小角标
           existingLec.lastUpdatedAt = new Date().toISOString();
@@ -318,12 +359,17 @@ async function syncCategory(category: 'humanity' | 'science') {
     }
 
     if (isMonthUpdated) {
-      await writeFile(archivePath, JSON.stringify(localArchive, null, 2), 'utf-8');
+      await writeFile(
+        archivePath,
+        JSON.stringify(localArchive, null, 2),
+        "utf-8",
+      );
     }
 
     // 热数据收集：过滤掉时间异常(0)的，且只保留最近及未来的数据
-    const recentInThisMonth = localArchive.filter(l =>
-      l.startTimestamp > 0 && l.startTimestamp >= RECENT_DAYS && l.startTimestamp <= FUTURE_DAYS
+    const recentInThisMonth = localArchive.filter((l) =>
+      l.startTimestamp > 0 && l.startTimestamp >= RECENT_DAYS &&
+      l.startTimestamp <= FUTURE_DAYS
     );
     allRecentLectures.push(...recentInThisMonth);
   }
@@ -331,15 +377,25 @@ async function syncCategory(category: 'humanity' | 'science') {
   // 3. 产出网页专用热数据 (Export Hot Data)
   if (hasAnyUpdate) {
     allRecentLectures.sort((a, b) => a.startTimestamp - b.startTimestamp);
-    const latestPath = join(BASE_DIR, category, 'latest.json');
+    const latestPath = join(BASE_DIR, category, "latest.json");
 
-    await writeFile(latestPath, JSON.stringify({
-      generatedAt: new Date().toISOString(),
-      total: allRecentLectures.length,
-      lectures: allRecentLectures
-    }, null, 2), 'utf-8');
+    await writeFile(
+      latestPath,
+      JSON.stringify(
+        {
+          generatedAt: new Date().toISOString(),
+          total: allRecentLectures.length,
+          lectures: allRecentLectures,
+        },
+        null,
+        2,
+      ),
+      "utf-8",
+    );
 
-    console.log(`✅ ${category} 数据更新完毕，最新 latest.json 包含 ${allRecentLectures.length} 条记录。`);
+    console.log(
+      `✅ ${category} 数据更新完毕，最新 latest.json 包含 ${allRecentLectures.length} 条记录。`,
+    );
   } else {
     console.log(`无新数据，${category} 归档保持不变。`);
   }
@@ -357,4 +413,6 @@ async function main() {
   }
 }
 
-await main();
+if (import.meta.main) {
+  await main();
+}

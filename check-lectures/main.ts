@@ -75,5 +75,7 @@ async function main(type: "humanity" | "science" = "humanity") {
   return;
 }
 
-await main("humanity");
-await main("science");
+if (import.meta.main) {
+  await main("humanity");
+  await main("science");
+}

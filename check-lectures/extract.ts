@@ -29,7 +29,7 @@ export const LIST_LECTURE: ListLecture = {
   lectureTime: "",
   lecturer: "",
   appointmentRequired: false,
-  detailUrl: ""
+  detailUrl: "",
 };
 
 export interface DetailLecture {
@@ -52,7 +52,7 @@ export const DETAILED_LECTURE: DetailLecture = {
   venueOfParallelSessions: "",
   startingTime: "",
   timeOfEnding: "",
-  lectureIntroduction: ""
+  lectureIntroduction: "",
 };
 
 type FetchLectures =
@@ -111,7 +111,8 @@ const no_appointment = [
 ];
 
 function is_appointment_required(info: string): boolean {
-  return appointment.some(x => info.includes(x)) && !no_appointment.some(x => info.includes(x));
+  return appointment.some((x) => info.includes(x)) &&
+    !no_appointment.some((x) => info.includes(x));
 }
 
 /** Extract the lecture list from the HTML of the lecture series page
@@ -132,11 +133,11 @@ export function parse_list_lectures(html: string): ListLecture[] | null {
       x.textContent.replace(/(\s|&nbsp;)+/g, " ").trim()
     );
     const url = tr.querySelectorAll("a")
-      .filter(x => x.textContent.trim() === "查看详情")[0]
-      ?.attributes.get("href")
-      ?? tr.querySelectorAll("a")
-        .map(x => x.attributes.get("href"))
-        .filter(x => x !== undefined)[0];
+      .filter((x) => x.textContent.trim() === "查看详情")[0]
+      ?.attributes.get("href") ??
+      tr.querySelectorAll("a")
+        .map((x) => x.attributes.get("href"))
+        .filter((x) => x !== undefined)[0];
 
     // console.log(cells[7]);
     const ret: ListLecture = {
@@ -174,9 +175,9 @@ export function parse_lecture_detail(html: string): DetailLecture | null {
     venueOfParallelSessions: "",
     startingTime: "",
     timeOfEnding: "",
-    lectureIntroduction: ""
+    lectureIntroduction: "",
   };
-  table.forEach(t => {
+  table.forEach((t) => {
     const [k, v] = t.textContent.trim().split("：");
     switch (k) {
       case "讲座名称":

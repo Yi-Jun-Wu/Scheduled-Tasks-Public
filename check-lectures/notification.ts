@@ -14,14 +14,20 @@ import { get_all_replies } from "./get_all_replies.ts";
 //   process.exit(1); // 异常退出
 // }
 
-const REGISTER_URL = "https://github.com/Yi-Jun-Wu/Scheduled-Tasks-Public/discussions/1";
+const REGISTER_URL =
+  "https://github.com/Yi-Jun-Wu/Scheduled-Tasks-Public/discussions/1";
 
 const COMMENT_NODE_ID = {
   humanity: process.env.COMMENT_NODE_ID_HUMANITY!, // 替换为实际的 Node ID
   science: process.env.COMMENT_NODE_ID_SCIENCE!, // 替换为实际的 Node ID
 };
-if (COMMENT_NODE_ID.humanity === undefined || COMMENT_NODE_ID.science === undefined) {
-  console.error("❌ 致命错误: 未检测到 COMMENT_NODE_ID_HUMANITY 或 COMMENT_NODE_ID_SCIENCE 环境变量！");
+if (
+  COMMENT_NODE_ID.humanity === undefined ||
+  COMMENT_NODE_ID.science === undefined
+) {
+  console.error(
+    "❌ 致命错误: 未检测到 COMMENT_NODE_ID_HUMANITY 或 COMMENT_NODE_ID_SCIENCE 环境变量！",
+  );
   console.error("请检查 workflow 的 env 配置是否正确绑定。");
   process.exit(1); // 异常退出
 }
@@ -31,10 +37,14 @@ const TYPE = {
   "science": "科学前沿讲座",
 };
 
-async function get_all_api_keys(type: "humanity" | "science"): Promise<string[]> {
+async function get_all_api_keys(
+  type: "humanity" | "science",
+): Promise<string[]> {
   const TOKEN = process.env.DISCUSSION_READ_TOKEN || process.env.GITHUB_TOKEN!;
   if (TOKEN === undefined) {
-    console.error("❌ 致命错误: 未检测到 DISCUSSION_READ_TOKEN 或 GITHUB_TOKEN 环境变量！");
+    console.error(
+      "❌ 致命错误: 未检测到 DISCUSSION_READ_TOKEN 或 GITHUB_TOKEN 环境变量！",
+    );
     console.error("请检查 workflow 的 env 配置以及 Secrets 是否正确绑定。");
     process.exit(1); // 异常退出
   }
@@ -53,7 +63,9 @@ export async function post_notification(
   const description = [
     `## 新增了 ${length} 个${TYPE[type]}, 列出如下:`,
     `*共 ${new Set(lectures.map((x) => x.date)).size} 个时间段*`,
-    length !== lectures.length ? "* 部分讲座可能未列出，请通过课程网站查询准确内容" : undefined,
+    length !== lectures.length
+      ? "* 部分讲座可能未列出，请通过课程网站查询准确内容"
+      : undefined,
     lectures.map((x) => {
       let weekday = "未知";
       try {
@@ -83,7 +95,9 @@ export async function post_notification(
 
   const API_KEYs = await get_all_api_keys(type);
   if (API_KEYs.length === 0) {
-    console.warn(`⚠️ 警告: 未找到任何有效的 API_KEY，无法发送通知。请检查环境变量和 Secrets 配置。`);
+    console.warn(
+      `⚠️ 警告: 未找到任何有效的 API_KEY，无法发送通知。请检查环境变量和 Secrets 配置。`,
+    );
     return;
   }
 
@@ -101,13 +115,15 @@ export async function post_notification(
       console.log("Api call response:", await response.json());
       console.log(`✅ 成功发送通知到 API_KEY: ${API_KEY.slice(0, 5)}...`);
     } catch (error) {
-      console.error(`❌ 发送通知失败，API_KEY: ${API_KEY.slice(0, 5)}, 错误:`, error);
+      console.error(
+        `❌ 发送通知失败，API_KEY: ${API_KEY.slice(0, 5)}, 错误:`,
+        error,
+      );
     }
   }
   // DEBUG
   // await writeFile("dist/response.log", inspect({ response, Body: data }, { maxArrayLength: Infinity, maxStringLength: Infinity }));
   return;
 }
-
 
 // console.log(await get_all_api_keys("humanity"));

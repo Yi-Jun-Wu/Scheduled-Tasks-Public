@@ -3,7 +3,7 @@
  */
 export async function get_all_replies(
   commentNodeId: string,
-  token: string
+  token: string,
 ): Promise<string[]> {
   const allReplies: string[] = [];
   let hasNextPage = true;
@@ -33,15 +33,15 @@ export async function get_all_replies(
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
         // Node 24 fetch 必须手动指定 User-Agent，否则 GitHub 有时会拒绝
-        "User-Agent": "node-fetch-script"
+        "User-Agent": "node-fetch-script",
       },
       body: JSON.stringify({
         query,
         variables: {
           id: commentNodeId,
-          after: cursor
-        }
-      })
+          after: cursor,
+        },
+      }),
     });
 
     const result: any = await response.json();
@@ -53,7 +53,10 @@ export async function get_all_replies(
 
     // 捕捉身份验证错误
     if (response.status === 401) {
-      throw new Error("身份验证失败：请检查 Token 权限或格式:" + token.slice(0, 5) + "****" + "total length: " + token.length);
+      throw new Error(
+        "身份验证失败：请检查 Token 权限或格式:" + token.slice(0, 5) + "****" +
+          "total length: " + token.length,
+      );
     }
 
     const repliesData = result.data?.node?.replies;

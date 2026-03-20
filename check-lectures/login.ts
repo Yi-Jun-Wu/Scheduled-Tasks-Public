@@ -77,7 +77,7 @@ function encryptPassword(pwd: string, pubKeyBase64: string): string {
 }
 
 let global_client: AxiosInstance | null = null;
-let currentSubsystemOrigin = '';
+let currentSubsystemOrigin = "";
 
 // // 封装一个命令行的交互输入函数
 // async function askQuestion(query: string): Promise<string> {
@@ -248,7 +248,7 @@ export async function login_for_data(
         console.log(
           `❌ 第 ${attempt} 次登录失败。可能原因：密码错误、验证码识别错误或被风控。`,
           loginRes.data,
-          loginRes.headers
+          loginRes.headers,
         );
         throw new Error(`登录失败，返回 URL: ${finalUrl}`);
 
@@ -266,7 +266,7 @@ export async function login_for_data(
         break; // 成功则跳出整个外层重试循环
       }
     }
-    if(!loginSuccess){
+    if (!loginSuccess) {
       throw new Error("经过多次尝试，仍然无法登录。");
     }
 
@@ -343,8 +343,3 @@ export async function fetch_url(url: string, params?: any): Promise<string> {
     : global_client.get(url);
   return (await response).data;
 }
-
-// // 执行主程序
-// const data = await main();
-
-// console.log(data?.slice(0, 100), "...", data?.slice(-100));
