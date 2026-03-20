@@ -6,11 +6,11 @@ A GitHub repository for storing various **public** scheduled tasks. It utilizes 
 
 ## Projects
 
-### [Check UCAS Lectures Update](./check-lectures/readme.md)
+### 1. [Check UCAS Lectures Update](./check-lectures/readme.md)
 
-定时监控UCAS人文讲座的系统, 最终目标是发送更新通知到移动设备上.
-目前已开放**订阅**功能, 请移步 [Discussion](https://github.com/Yi-Jun-Wu/Scheduled-Tasks-Public/discussions/1) 回复 api key 自动完成订阅.
-如果仅需要**查看未来讲座**时间, 欢迎移步[UCAS讲座周历 - 在线网站](https://yi-jun-wu.github.io/UCAS-Lectures/)
+- 定时监控UCAS人文讲座的系统, 最终目标是发送更新通知到移动设备上.
+- 目前已开放**订阅**功能, 请移步 [Discussion](https://github.com/Yi-Jun-Wu/Scheduled-Tasks-Public/discussions/1) 回复 api key 自动完成订阅.
+- 如果仅需要**查看未来讲座**时间, 欢迎移步[UCAS讲座周历 - 在线网站](https://yi-jun-wu.github.io/UCAS-Lectures/)
 
 ## 开源协议
 
