@@ -14,7 +14,7 @@ import { get_all_replies } from "./get_all_replies.ts";
 //   process.exit(1); // 异常退出
 // }
 
-const REGISTER_URL = "https://sct.ftqq.com/sendkey";
+const REGISTER_URL = "https://github.com/Yi-Jun-Wu/Scheduled-Tasks-Public/discussions/1";
 
 const COMMENT_NODE_ID = {
   humanity: process.env.COMMENT_NODE_ID_HUMANITY!, // 替换为实际的 Node ID
@@ -57,13 +57,13 @@ export async function post_notification(
     lectures.map((x) => {
       let weekday = "未知";
       try {
-        weekday = "星期" + DAYS[new Date(x.date).getDay()];
+        weekday = "星期" + DAYS[new Date(x.date.split(" ")[0]).getDay()];
       } catch (error) {
         console.error(`❌ 获取星期几时出错，日期: ${x.date}, 错误:`, error);
       }
       return [
         `### 讲座: ${x.name}`,
-        x.need_appointment ? " (⚠️ 需要预约 ⚠️)" : undefined,
+        x.need_appointment ? "⚠️ 需要预约" : undefined,
         `时间: ${x.date} (${weekday})`,
         `组织: ${x.department}-${x.topic}`,
       ];
