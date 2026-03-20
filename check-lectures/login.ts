@@ -329,12 +329,11 @@ export async function login_for_data(
 
 export async function fetch_url(url: string, params?: any): Promise<string> {
   if (global_client === null) {
-    login_for_data("humanity");
+    await login_for_data("humanity");
   }
   if (!global_client) {
     throw new Error("Could not login to SEP!");
   }
-  // turn /portal/site/xxx into https://xkxt.ucas.ac.cn:8843/portal/site/xxx
   if (url.startsWith("/")) {
     url = currentSubsystemOrigin + url;
   }

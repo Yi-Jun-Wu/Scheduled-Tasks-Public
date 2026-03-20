@@ -158,7 +158,7 @@ function parseLectureTimeSafe(timeStr: string): { start: number; end: number } {
 /**
  * 生成纯字母的特征码 (Letter-Only FourCC/ID)
  */
-function generateLetterID(url: string, duplicateIndex: number): string {
+export function generateLetterID(url: string, duplicateIndex: number): string {
   const safeUrl = url || "empty_url"; // 防止 url 为空
   const rawHash = createHash("md5").update(`${safeUrl}_${duplicateIndex}`)
     .digest("hex");
