@@ -136,7 +136,7 @@ export async function get_all_replies(
   return allReplies;
 }
 
-const token = process.env.GITHUB_TOKEN!;
+const token = process.env.DISCUSSION_READ_TOKEN || process.env.GITHUB_TOKEN;
 if (!token || token.length === 0) {
   throw new Error("请设置 GITHUB_TOKEN 环境变量");
 }
