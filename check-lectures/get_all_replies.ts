@@ -98,7 +98,7 @@ export async function get_all_replies(
       method: "POST",
       headers: {
         // 重要：GraphQL 建议使用这个 Authorization 格式
-        "Authorization": `token ${token}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
         // Node 24 fetch 必须手动指定 User-Agent，否则 GitHub 有时会拒绝
         "User-Agent": "node-fetch-script"
