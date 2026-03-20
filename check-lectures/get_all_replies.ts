@@ -30,7 +30,7 @@ export async function get_all_replies(
       method: "POST",
       headers: {
         // 重要：GraphQL 建议使用这个 Authorization 格式
-        "Authorization": `token ${token.trim()}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
         // Node 24 fetch 必须手动指定 User-Agent，否则 GitHub 有时会拒绝
         "User-Agent": "node-fetch-script"
@@ -53,9 +53,7 @@ export async function get_all_replies(
 
     // 捕捉身份验证错误
     if (response.status === 401) {
-      console.log("GraphQL Response:", response, result);
-      console.log("Token Length:", token?.length);
-      throw new Error("身份验证失败：请检查 Token 权限或格式:" + token.slice(0, 10) + "****");
+      throw new Error("身份验证失败：请检查 Token 权限或格式:" + token.slice(0, 5) + "****" + "total length: " + token.length);
     }
 
     const repliesData = result.data?.node?.replies;
