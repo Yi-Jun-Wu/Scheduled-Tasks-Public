@@ -98,8 +98,20 @@ function parseLectureTimeSafe(timeStr: string): { start: number; end: number } {
   if (!timeStr || timeStr.trim() === '') return fallback;
 
   try {
-    const parts = timeStr.trim().split(' ');
-    if (parts.length < 2) return fallback;
+    const str = timeStr.trim();
+    let parts = str.split(' ');
+    if (parts.length < 2) {
+      // 尝试用中文空格分割
+      parts = str.split(/\p{Zs}|\n|\r|&nbsp;/u).filter(x => x?.length > 0);
+    }
+    if (parts.length < 2) {
+      // 尝试用非字母数字的符号分割，极端容错
+      parts = str.split(/[^A-Za-z0-9:\/\-]/);
+    }
+    if (parts.length < 2) {
+      fallback.start = fallback.end = Date.parse(str) || 0;
+      return fallback;
+    }
 
     const datePart = parts[0];
     const timeRange = parts[1];
