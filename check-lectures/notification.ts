@@ -14,6 +14,8 @@ import { get_all_replies } from "./get_all_replies.ts";
 //   process.exit(1); // 异常退出
 // }
 
+const REGISTER_URL = "https://sct.ftqq.com/sendkey";
+
 const COMMENT_NODE_ID = {
   humanity: process.env.COMMENT_NODE_ID_HUMANITY!, // 替换为实际的 Node ID
   science: process.env.COMMENT_NODE_ID_SCIENCE!, // 替换为实际的 Node ID
@@ -30,8 +32,8 @@ const TYPE = {
 };
 
 async function get_all_api_keys(type: "humanity" | "science"): Promise<string[]> {
-  const TOKEN  = process.env.DISCUSSION_READ_TOKEN || process.env.GITHUB_TOKEN!;
-  if(TOKEN === undefined) {
+  const TOKEN = process.env.DISCUSSION_READ_TOKEN || process.env.GITHUB_TOKEN!;
+  if (TOKEN === undefined) {
     console.error("❌ 致命错误: 未检测到 DISCUSSION_READ_TOKEN 或 GITHUB_TOKEN 环境变量！");
     console.error("请检查 workflow 的 env 配置以及 Secrets 是否正确绑定。");
     process.exit(1); // 异常退出
@@ -46,15 +48,27 @@ export async function post_notification(
   length: number,
   type: "humanity" | "science",
 ) {
+  const DAYS = ["日", "一", "二", "三", "四", "五", "六"];
   const header = `${TYPE[type]}讲座更新提醒`;
   const description = [
     `## 新增了 ${length} 个${TYPE[type]}, 列出如下:`,
     `*共 ${new Set(lectures.map((x) => x.date)).size} 个时间段*`,
-    lectures.map((x) => [
-      `### 讲座: ${x.name}`,
-      `时间: ${x.date}${x.need_appointment ? " (⚠️ 需要预约 ⚠️)" : ""}`,
-      `组织: ${x.department}-${x.topic}`,
-    ]),
+    length !== lectures.length ? "* 部分讲座可能未列出，请通过课程网站查询准确内容" : undefined,
+    lectures.map((x) => {
+      let weekday = "未知";
+      try {
+        weekday = "星期" + DAYS[new Date(x.date).getDay()];
+      } catch (error) {
+        console.error(`❌ 获取星期几时出错，日期: ${x.date}, 错误:`, error);
+      }
+      return [
+        `### 讲座: ${x.name}`,
+        x.need_appointment ? " (⚠️ 需要预约 ⚠️)" : undefined,
+        `时间: ${x.date} (${weekday})`,
+        `组织: ${x.department}-${x.topic}`,
+      ];
+    }),
+    `*如果你需要取消订阅, 请访问 [订阅网站](${REGISTER_URL}) 并删除你的 API_KEY。*`,
   ].flat(2).filter(Boolean).join("\n\n");
   const brief = `${TYPE[type]}讲座更新(${length}个): ${lectures[0]?.name}`;
 
