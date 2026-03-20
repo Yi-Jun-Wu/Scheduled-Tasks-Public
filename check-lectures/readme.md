@@ -333,7 +333,7 @@ Scheduled Task
 
 ## 5. 后记
 
-代码采用 MIT 协议开源
+代码采用 GNU GPLv3 协议开源, 不得用于闭源或专有软件的开发.
 
 ### UCAS Lectures (国科大讲座周历)
 
