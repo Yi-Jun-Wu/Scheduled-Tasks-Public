@@ -67,7 +67,7 @@ jobs:
         run: |
           cd check-lectures
           npm install axios axios-cookiejar-support sharp tesseract.js tough-cookie @thednp/domparser @octokit/graphql
-          node .\get_all_replies.ts # test
+          node get_all_replies.ts # test
           node main.ts
         env:
           # 配置扫描系统需要的账号密码
