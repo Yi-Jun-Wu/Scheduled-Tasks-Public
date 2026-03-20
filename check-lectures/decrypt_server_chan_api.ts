@@ -41,7 +41,7 @@ function decryptApiKey(encryptedHex: string, privateKey: crypto.KeyObject | stri
  * 合法 key 格式: SCTXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  */
 function isValidApiKey(apiKey: string): boolean {
-  const apiKeyPattern = /^[A-Za-z0-9]{30, 40}$/;
+  const apiKeyPattern = /^[A-Za-z0-9]{30,40}$/;
   return apiKeyPattern.test(apiKey);
 }
 

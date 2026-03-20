@@ -93,3 +93,6 @@ export async function post_notification(
   // await writeFile("dist/response.log", inspect({ response, Body: data }, { maxArrayLength: Infinity, maxStringLength: Infinity }));
   return;
 }
+
+
+console.log(await get_all_api_keys("humanity"));

@@ -6,6 +6,7 @@ export interface Lecture {
   topic: string;
   name: string;
   date: string;
+  need_appointment: boolean;
 }
 
 export interface ListLecture {
