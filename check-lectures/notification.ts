@@ -1,21 +1,34 @@
 // ⚠️ 生产环境中请保存入 Secrets, 不得使用明文
 
+import { processApiKeys } from "./decrypt_server_chan_api.ts";
 import type { Lecture } from "./extract.ts";
+import { get_all_replies } from "./get_all_replies.ts";
 
-// 从环境变量读取账号密码
-const API_KEY = process.env.API_KEY!;
-if (API_KEY === undefined) {
-  console.error("❌ 致命错误: 未检测到 API_KEY 环境变量！");
-  console.error(
-    "如果你在 GitHub Actions 运行，请检查 workflow 的 env 配置以及 Secrets 是否正确绑定。",
-  );
-  process.exit(1); // 异常退出
-}
+// // 从环境变量读取账号密码
+// const API_KEY = process.env.API_KEY!;
+// if (API_KEY === undefined) {
+//   console.error("❌ 致命错误: 未检测到 API_KEY 环境变量！");
+//   console.error(
+//     "如果你在 GitHub Actions 运行，请检查 workflow 的 env 配置以及 Secrets 是否正确绑定。",
+//   );
+//   process.exit(1); // 异常退出
+// }
+
+const COMMENT_NODE_ID = {
+  humanity: "DC_kwDORqBAz84A93qz", // 替换为实际的 Node ID
+  science: "DC_kwDORqBAz84A93rQ", // 替换为实际的 Node ID
+};
 
 const TYPE = {
   "humanity": "人文讲座",
   "science": "科学前沿讲座",
 };
+
+async function get_all_api_keys(type: "humanity" | "science"): Promise<string[]> {
+  const replies = await get_all_replies(COMMENT_NODE_ID[type], process.env.GITHUB_TOKEN || "");
+  const apiKeys = processApiKeys(replies);
+  return apiKeys;
+}
 
 export async function post_notification(
   lectures: Lecture[],
@@ -41,19 +54,30 @@ export async function post_notification(
     short: brief,
   };
   const postData = new URLSearchParams(params).toString();
-  const url = `https://sctapi.ftqq.com/${API_KEY}.send`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Content-Length": Buffer.byteLength(postData).toString(),
-    },
-    body: postData,
-  });
+  const API_KEYs = await get_all_api_keys(type);
+  if (API_KEYs.length === 0) {
+    console.warn(`⚠️ 警告: 未找到任何有效的 API_KEY，无法发送通知。请检查环境变量和 Secrets 配置。`);
+    return;
+  }
 
-  const data = await response.json();
-  console.log("Api call response:", data);
+  for (const API_KEY of API_KEYs) {
+    try {
+      const url = `https://sctapi.ftqq.com/${API_KEY}.send`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Length": Buffer.byteLength(postData).toString(),
+        },
+        body: postData,
+      });
+      console.log("Api call response:", await response.json());
+      console.log(`✅ 成功发送通知到 API_KEY: ${API_KEY.slice(0, 5)}...`);
+    } catch (error) {
+      console.error(`❌ 发送通知失败，API_KEY: ${API_KEY.slice(0, 5)}, 错误:`, error);
+    }
+  }
   // DEBUG
   // await writeFile("dist/response.log", inspect({ response, Body: data }, { maxArrayLength: Infinity, maxStringLength: Infinity }));
   return;
