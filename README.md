@@ -14,4 +14,4 @@ A GitHub repository for storing various **public** scheduled tasks. It utilizes 
 
 ## 开源协议
 
-本项目遵循 [GNU GPLv3](./LICENSE) 开源。你可以自由地使用、修改和分发本项目源码，但**必须保持开源**。本项目严禁用于任何闭源或专有软件的开发。
+本项目遵循 [GNU AGPLv3](./LICENSE) 开源。你可以自由地使用、修改和分发本项目源码，但**必须保持开源**。本项目严禁用于任何闭源或专有软件的开发。
