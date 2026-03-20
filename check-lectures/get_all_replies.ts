@@ -53,7 +53,7 @@ export async function get_all_replies(
 
     // 捕捉身份验证错误
     if (response.status === 401) {
-      console.log("Token Length:", process.env.MY_TOKEN?.length);
+      console.log("Token Length:", token?.length);
       throw new Error("身份验证失败：请检查 Token 权限或格式:" + token.slice(0, 10) + "****");
     }
 
