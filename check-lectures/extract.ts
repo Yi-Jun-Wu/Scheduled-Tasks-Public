@@ -88,6 +88,7 @@ export function parse_lectures(html: string): FetchLectures {
       topic: cells[0],
       name: cells[1],
       date: cells[3],
+      need_appointment: is_appointment_required(cells[7]),
     };
   });
 
@@ -109,6 +110,13 @@ const no_appointment = [
   "此讲座无需报名",
 ];
 
+function is_appointment_required(info: string): boolean {
+  return appointment.some(x => info.includes(x)) && !no_appointment.some(x => info.includes(x));
+}
+
+/** Extract the lecture list from the HTML of the lecture series page
+ * @returns null if the HTML structure is unexpected, otherwise a list of lectures (possibly empty)
+ */
 export function parse_list_lectures(html: string): ListLecture[] | null {
   const parser = DomParser();
   const doc = parser.parseFromString(fix_html(html)).root;
@@ -139,7 +147,7 @@ export function parse_list_lectures(html: string): ListLecture[] | null {
       targetedObjects: cells[4] ?? "",
       lecturer: cells[5] ?? "",
       department: cells[6] ?? "",
-      appointmentRequired: appointment.some(x => cells[7].includes(x)) && !no_appointment.some(x => cells[7].includes(x)),
+      appointmentRequired: is_appointment_required(cells[7] ?? ""),
       detailUrl: url ?? "",
     };
     return ret;

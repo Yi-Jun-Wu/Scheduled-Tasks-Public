@@ -52,7 +52,7 @@ export async function post_notification(
     `*共 ${new Set(lectures.map((x) => x.date)).size} 个时间段*`,
     lectures.map((x) => [
       `### 讲座: ${x.name}`,
-      `时间: ${x.date}`,
+      `时间: ${x.date}${x.need_appointment ? " (⚠️ 需要预约 ⚠️)" : ""}`,
       `组织: ${x.department}-${x.topic}`,
     ]),
   ].flat(2).filter(Boolean).join("\n\n");
