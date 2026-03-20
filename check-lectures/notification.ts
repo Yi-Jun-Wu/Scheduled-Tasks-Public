@@ -30,7 +30,13 @@ const TYPE = {
 };
 
 async function get_all_api_keys(type: "humanity" | "science"): Promise<string[]> {
-  const replies = await get_all_replies(COMMENT_NODE_ID[type], process.env.GITHUB_TOKEN || "");
+  const TOKEN  = process.env.DISCUSSION_READ_TOKEN || process.env.GITHUB_TOKEN!;
+  if(TOKEN === undefined) {
+    console.error("❌ 致命错误: 未检测到 DISCUSSION_READ_TOKEN 或 GITHUB_TOKEN 环境变量！");
+    console.error("请检查 workflow 的 env 配置以及 Secrets 是否正确绑定。");
+    process.exit(1); // 异常退出
+  }
+  const replies = await get_all_replies(COMMENT_NODE_ID[type], TOKEN);
   const apiKeys = processApiKeys(replies);
   return apiKeys;
 }
