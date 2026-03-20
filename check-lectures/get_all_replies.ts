@@ -136,6 +136,9 @@ export async function get_all_replies(
   return allReplies;
 }
 
-// const token = process.env.GITHUB_TOKEN || "";
-// const commentId = "DC_kwDORqBAz84A93qz"; // 替换为真实的 Node ID
-// const content = await get_all_replies(commentId, token);
+const token = process.env.GITHUB_TOKEN!;
+if (!token || token.length === 0) {
+  throw new Error("请设置 GITHUB_TOKEN 环境变量");
+}
+const commentId = "DC_kwDORqBAz84A93qz"; // 替换为真实的 Node ID
+const content = await get_all_replies(commentId, token);
