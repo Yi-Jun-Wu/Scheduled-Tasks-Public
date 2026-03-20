@@ -69,11 +69,12 @@ export async function get_all_replies(
   return allReplies;
 }
 
-// test
-const token = process.env.DISCUSSION_READ_TOKEN;
-if (!token || token.length === 0) {
-  throw new Error("请设置 DISCUSSION_READ_TOKEN 环境变量");
+if(import.meta.main) {
+  const token = process.env.DISCUSSION_READ_TOKEN;
+  if (!token || token.length === 0) {
+    throw new Error("请设置 DISCUSSION_READ_TOKEN 环境变量");
+  }
+  const commentId = "DC_kwDORqBAz84A93qz";
+  const content = await get_all_replies(commentId, token);
+  console.log(content);
 }
-const commentId = "DC_kwDORqBAz84A93qz";
-const content = await get_all_replies(commentId, token);
-console.log(content);
