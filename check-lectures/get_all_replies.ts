@@ -142,3 +142,4 @@ if (!token || token.length === 0) {
 }
 const commentId = "DC_kwDORqBAz84A93qz"; // 替换为真实的 Node ID
 const content = await get_all_replies(commentId, token);
+console.log(content);
