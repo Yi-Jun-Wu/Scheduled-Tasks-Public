@@ -27,8 +27,6 @@ on:
     ## totally 49 runs per day, 1470 minutes per month
     ## limits: 2000 minutes per month for private repo (73.5%)
 
-permissions:
-  discussions: read
 
 concurrency:
   group: check-lecture
@@ -39,6 +37,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      discussions: read
     steps:
       # Checks-out repo
       - uses: actions/checkout@v6
