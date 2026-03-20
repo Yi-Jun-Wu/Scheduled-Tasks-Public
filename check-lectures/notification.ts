@@ -68,6 +68,7 @@ export async function post_notification(
         `组织: ${x.department}-${x.topic}`,
       ];
     }),
+    "---",
     `*如果你需要取消订阅, 请访问 [订阅网站](${REGISTER_URL}) 并删除你的 API_KEY。*`,
   ].flat(2).filter(Boolean).join("\n\n");
   const brief = `${TYPE[type]}讲座更新(${length}个): ${lectures[0]?.name}`;
