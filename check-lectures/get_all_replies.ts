@@ -30,7 +30,7 @@ export async function get_all_replies(
       method: "POST",
       headers: {
         // 重要：GraphQL 建议使用这个 Authorization 格式
-        "Authorization": `Bearer ${token}`,
+        "Authorization": `token ${token}`,
         "Content-Type": "application/json",
         // Node 24 fetch 必须手动指定 User-Agent，否则 GitHub 有时会拒绝
         "User-Agent": "node-fetch-script"
@@ -76,5 +76,5 @@ if(import.meta.main) {
   }
   const commentId = "DC_kwDORqBAz84A93qz";
   const content = await get_all_replies(commentId, token);
-  console.log(content);
+  console.log("Api Content:", content);
 }

@@ -37,9 +37,6 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      discussions: read
-      contents: read  # 有时读取仓库元数据也需要这个
     steps:
       # Checks-out repo
       - uses: actions/checkout@v6
