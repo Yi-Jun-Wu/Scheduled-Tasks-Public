@@ -5,13 +5,15 @@ import { readdir, readFile, writeFile } from "fs/promises";
 import { generateLetterID, type MergedLecture } from "./sync_database.ts";
 import { fetch_url } from "./login.ts";
 import { parse_lecture_detail } from "./extract.ts";
+import { stdout } from "process";
 
 async function get_missing_ids(
   type: "humanity" | "science",
+  stat: Record<number, boolean>
 ): Promise<number[]> {
   const folder = `./lectures/${type}/archive/`;
   const files = await readdir(folder, { encoding: "utf-8" });
-  const ret = new Set<number>();
+  const ret = new Set<number>(Object.keys(stat).map((x) => parseInt(x)));
   for (const file of files) {
     const content: MergedLecture[] = JSON.parse(
       (await readFile(folder + file, { encoding: "utf-8" })).toString(),
@@ -57,7 +59,14 @@ async function read_lecture(url: string): Promise<MergedLecture> {
 }
 
 async function main(type: "humanity" | "science") {
-  const missing_ids = await get_missing_ids(type);
+  const stat: Record<number, boolean> = JSON.parse(
+    (await readFile(`./dist/${type}_stat.json`, { encoding: "utf-8" })).toString()
+  );
+  const results: MergedLecture[] = JSON.parse(
+    (await readFile(`./dist/${type}_missing_lectures.json`, { encoding: "utf-8" })).toString()
+  );
+
+  const missing_ids = await get_missing_ids(type, stat);
   console.log(
     `Missing ${missing_ids.length} lectures: ${missing_ids.slice(0, 10).join(", ")
     }${missing_ids.length > 10 ? `... (${missing_ids.length - 10} more)` : ""}`,
@@ -67,10 +76,26 @@ async function main(type: "humanity" | "science") {
     encoding: "utf-8",
   });
 
-  const stat: Record<number, boolean> = {};
-  const results: MergedLecture[] = [];
 
-  for (const id of missing_ids.slice(-10)) {
+  let startTime = performance.now();
+  let i = 0;
+  const MAX_READ = 500; // Limit the number of lectures to read in one run
+  for (const id of missing_ids.slice(-MAX_READ)) {
+    const total = Math.min(missing_ids.length, MAX_READ);
+    const prog = Math.round(i / total * 10000) / 100;
+    const elapsed = (performance.now() - startTime) / 1000;
+    const eta = elapsed / (i || 1) * (total - i);
+    stdout.write(`\rProgress: ${prog}%. Reading ${type} lecture ${id}...... ETA: ${eta.toFixed(1)}s\r`);
+    if ((i++) % 10 === 0) {
+      // back up files every 10 lectures
+      await writeFile(`./dist/${type}_missing_lectures.json`, JSON.stringify(results, null, 2), {
+        encoding: "utf-8",
+      });
+      await writeFile(`./dist/${type}_stat.json`, JSON.stringify(stat, null, 2), {
+        encoding: "utf-8",
+      });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
     try {
       const lecture = await read_lecture(LEC_URL(id, type));
       results.push(lecture);
@@ -81,11 +106,11 @@ async function main(type: "humanity" | "science") {
     }
     stat[id] = true;
   }
-  console.log("Read lectures:", stat);
+  console.log("\nRead lectures:", "Success:", Object.values(stat).filter((x) => x).length, "Failed:", Object.values(stat).filter((x) => !x).length);
   await writeFile(`./dist/${type}_missing_lectures.json`, JSON.stringify(results, null, 2), {
     encoding: "utf-8",
   });
-  await writeFile(`./dist/${type}_stat.txt`, JSON.stringify(stat, null, 2), {
+  await writeFile(`./dist/${type}_stat.json`, JSON.stringify(stat, null, 2), {
     encoding: "utf-8",
   });
 }
