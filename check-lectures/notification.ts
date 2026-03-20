@@ -15,9 +15,14 @@ import { get_all_replies } from "./get_all_replies.ts";
 // }
 
 const COMMENT_NODE_ID = {
-  humanity: "DC_kwDORqBAz84A93qz", // 替换为实际的 Node ID
-  science: "DC_kwDORqBAz84A93rQ", // 替换为实际的 Node ID
+  humanity: process.env.COMMENT_NODE_ID_HUMANITY!, // 替换为实际的 Node ID
+  science: process.env.COMMENT_NODE_ID_SCIENCE!, // 替换为实际的 Node ID
 };
+if (COMMENT_NODE_ID.humanity === undefined || COMMENT_NODE_ID.science === undefined) {
+  console.error("❌ 致命错误: 未检测到 COMMENT_NODE_ID_HUMANITY 或 COMMENT_NODE_ID_SCIENCE 环境变量！");
+  console.error("请检查 workflow 的 env 配置是否正确绑定。");
+  process.exit(1); // 异常退出
+}
 
 const TYPE = {
   "humanity": "人文讲座",

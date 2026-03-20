@@ -63,12 +63,19 @@ jobs:
       - name: Run core scripts
         run: |
           cd check-lectures
-          npm install axios axios-cookiejar-support sharp tesseract.js tough-cookie @thednp/domparser
+          npm install axios axios-cookiejar-support sharp tesseract.js tough-cookie @thednp/domparser @octokit/graphql
           node main.ts
         env:
+          # 配置扫描系统需要的账号密码
           SEP_USERNAME: ${{ secrets.SEP_USERNAME }}
           SEP_PASSWORD: ${{ secrets.SEP_PASSWORD }}
-          API_KEY: ${{ secrets.SERVER_CHAN_KEY }}
+          # 配置通知系统需要拉取的注册来源
+          COMMENT_NODE_ID_HUMANITY: DC_kwDORqBAz84A93qz
+          COMMENT_NODE_ID_SCIENCE: DC_kwDORqBAz84A93rQ
+          # 配置通知系统需要的 RSA 私钥(解密 Api Key)
+          RSA_PRIVATE_KEY: ${{ secrets.RSA_PRIVATE_KEY }}
+          # 配置通知系统需要的 GitHub Token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }},
 
       # 核心步骤：保存当前的 Cookie 缓存
       - name: Restore Session Cookie
