@@ -120,6 +120,7 @@ export async function post_notification(
         error,
       );
     }
+    // return; // DEBUG: 只发送一次(我自己)
   }
   // DEBUG
   // await writeFile("dist/response.log", inspect({ response, Body: data }, { maxArrayLength: Infinity, maxStringLength: Infinity }));

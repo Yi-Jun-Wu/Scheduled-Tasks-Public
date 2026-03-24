@@ -64,6 +64,7 @@ async function task(type: "humanity" | "science", to_sync_database: boolean): Pr
 }
 
 async function main(type: "humanity" | "science" = "humanity", to_sync_database: boolean) {
+  console.log(`\n=== 开始拉取网页: ${type} ===`);
   const result = await task(type, to_sync_database);
   if (!result.success) {
     console.error("[Run Failed]", result.reason);
@@ -91,7 +92,7 @@ async function main(type: "humanity" | "science" = "humanity", to_sync_database:
 }
 
 if (import.meta.main) {
-  const to_sync_database = process.argv[2].trim().toLowerCase() === "true";
+  const to_sync_database = process.argv[2]?.trim().toLowerCase() === "true";
   if (to_sync_database) {
     console.log("同步数据库模式：将从网页获取的最新讲座信息覆盖本地数据库（JSON 文件）。");
   }
