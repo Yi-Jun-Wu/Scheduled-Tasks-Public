@@ -62,28 +62,28 @@ export async function post_notification(
   const header = `${TYPE[type]}讲座更新提醒`;
   const description = [
     `## 新增了 ${length} 个${TYPE[type]}, 列出如下:`,
-    `*共 ${new Set(lectures.map((x) => x.date)).size} 个时间段*`,
+    `*共 ${new Set(lectures.map((x) => x.lectureTime)).size} 个时间段*`,
     length !== lectures.length
       ? "* 部分讲座可能未列出，请通过课程网站查询准确内容"
       : undefined,
     lectures.map((x) => {
       let weekday = "未知";
       try {
-        weekday = "星期" + DAYS[new Date(x.date.split(" ")[0]).getDay()];
+        weekday = "星期" + DAYS[new Date(x.lectureTime.split(" ")[0]).getDay()];
       } catch (error) {
-        console.error(`❌ 获取星期几时出错，日期: ${x.date}, 错误:`, error);
+        console.error(`❌ 获取星期几时出错，日期: ${x.lectureTime}, 错误:`, error);
       }
       return [
-        `### 讲座: ${x.name}`,
-        x.need_appointment ? "⚠️ 需要预约" : undefined,
-        `时间: ${x.date} (${weekday})`,
-        `组织: ${x.department}-${x.topic}`,
+        `### 讲座: ${x.lectureName}`,
+        x.appointmentRequired ? "⚠️ 需要预约" : undefined,
+        `时间: ${x.lectureTime} (${weekday})`,
+        `组织: ${x.department}-${x.seriesName} / ${x.targetedObjects}`,
       ];
     }),
     "---",
     `*如果你需要取消订阅, 请访问 [订阅网站](${REGISTER_URL}) 并删除你的 API_KEY。*`,
   ].flat(2).filter(Boolean).join("\n\n");
-  const brief = `${TYPE[type]}讲座更新(${length}个): ${lectures[0]?.name}`;
+  const brief = `${TYPE[type]}讲座更新(${length}个): ${lectures[0]?.lectureName}`;
 
   const params = {
     text: header,

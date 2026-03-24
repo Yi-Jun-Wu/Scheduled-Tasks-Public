@@ -1,7 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { find_new_lectures, type Lecture, parse_lectures } from "./extract.ts";
+import { find_new_lectures, get_lectures_num, type Lecture } from "./extract.ts";
 import { login_for_data } from "./login.ts";
 import { post_notification } from "./notification.ts";
+import { list_lectures, sync_database } from "./sync_database.ts";
 
 const LECTURE_FILE = {
   "humanity": "humanity_lectures.json",
@@ -14,10 +15,10 @@ interface LectureRec {
 }
 
 type TaskResult =
-  | { success: true; diff: false }
-  | { success: true; diff: true; lectures: Lecture[]; length: number }
+  | { success: true; diff: false; lectures_list: Lecture[]; }
+  | { success: true; diff: true; lectures_list: Lecture[]; lectures: Lecture[]; length: number }
   | { success: false; reason: string };
-async function task(type: "humanity" | "science"): Promise<TaskResult> {
+async function task(type: "humanity" | "science", to_sync_database: boolean): Promise<TaskResult> {
   let history: LectureRec;
   try {
     history = JSON.parse((await readFile(LECTURE_FILE[type])).toString());
@@ -35,12 +36,12 @@ async function task(type: "humanity" | "science"): Promise<TaskResult> {
     if (!html) {
       return { success: false, reason: "Cannot fetch html" };
     }
-    const res = parse_lectures(html);
-    if (!res.success) {
-      return res;
+    new_length = get_lectures_num(html) ?? history.length;
+    if (to_sync_database) {
+      lectures = await list_lectures(type);
+    } else {
+      lectures = await list_lectures(type, 0);
     }
-    lectures = res.data;
-    new_length = res.length;
   } catch (e) {
     return { success: false, reason: (e as Error).message };
   }
@@ -48,7 +49,7 @@ async function task(type: "humanity" | "science"): Promise<TaskResult> {
   const new_lectures = find_new_lectures(history.data, lectures);
   if (!(new_length > 0)) new_length = history.length;
   if (!new_lectures && new_length === history.length) {
-    return { success: true, diff: false };
+    return { success: true, diff: false, lectures_list: lectures };
   }
   const added_length = new_length - history.length;
   history.length = new_length;
@@ -56,26 +57,44 @@ async function task(type: "humanity" | "science"): Promise<TaskResult> {
   return {
     success: true,
     diff: true,
+    lectures_list: lectures,
     lectures: new_lectures ?? [],
     length: added_length,
   };
 }
 
-async function main(type: "humanity" | "science" = "humanity") {
-  const result = await task(type);
+async function main(type: "humanity" | "science" = "humanity", to_sync_database: boolean) {
+  const result = await task(type, to_sync_database);
   if (!result.success) {
     console.error("[Run Failed]", result.reason);
     return;
   }
   if (!result.diff) {
     console.log("[No More Lectures]", type);
-    return;
+  } else {
+    try {
+      await post_notification(result.lectures, result.length, type);
+    } catch (e) {
+      console.error("Failed to post notification:", (e as Error).message);
+    }
   }
-  await post_notification(result.lectures, result.length, type);
+  if (to_sync_database) {
+    try {
+      await sync_database(type, result.lectures_list);
+      console.log("\n🎉 讲座数据同步流程执行完毕！");
+    } catch (err) {
+      console.error("执行过程中发生错误:", err);
+      process.exit(1);
+    }
+  }
   return;
 }
 
 if (import.meta.main) {
-  await main("humanity");
-  await main("science");
+  const to_sync_database = process.argv[2].trim().toLowerCase() === "true";
+  if (to_sync_database) {
+    console.log("同步数据库模式：将从网页获取的最新讲座信息覆盖本地数据库（JSON 文件）。");
+  }
+  await main("humanity", to_sync_database);
+  await main("science", to_sync_database);
 }

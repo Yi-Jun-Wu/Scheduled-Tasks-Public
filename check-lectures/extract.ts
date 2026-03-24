@@ -1,15 +1,15 @@
 import { DomParser } from "@thednp/domparser";
 // import { readFile } from "node:fs/promises";
 
-export interface Lecture {
-  department: string;
-  topic: string;
-  name: string;
-  date: string;
-  need_appointment: boolean;
-}
+// export interface Lecture {
+//   department: string;
+//   topic: string;
+//   name: string;
+//   date: string;
+//   need_appointment: boolean;
+// }
 
-export interface ListLecture {
+export interface Lecture {
   seriesName: string;
   lectureName: string;
   creditHours: string;
@@ -20,7 +20,7 @@ export interface ListLecture {
   appointmentRequired: boolean;
   detailUrl: string;
 }
-export const LIST_LECTURE: ListLecture = {
+export const LIST_LECTURE: Lecture = {
   seriesName: "",
   lectureName: "",
   creditHours: "",
@@ -55,17 +55,50 @@ export const DETAILED_LECTURE: DetailLecture = {
   lectureIntroduction: "",
 };
 
-type FetchLectures =
-  | { success: true; data: Lecture[]; length: number }
-  | { success: false; fatal: boolean; reason: string };
-export function parse_lectures(html: string): FetchLectures {
-  // DEBUG
-  // await writeFile("dist/res.html", html);
+// type FetchLectures =
+//   | { success: true; data: Lecture[]; length: number }
+//   | { success: false; fatal: boolean; reason: string };
+// export function parse_lectures(html: string): FetchLectures {
+//   // DEBUG
+//   // await writeFile("dist/res.html", html);
 
-  // initialize parser
+//   // initialize parser
+//   const parser = DomParser();
+
+//   // parse the source
+//   const doc = parser.parseFromString(fix_html(html)).root;
+
+//   const info = doc.querySelector("bn-info")?.textContent ?? "";
+//   let statistic = parseInt(info?.trim().slice(1));
+//   if (isNaN(statistic) || !(statistic > 0)) {
+//     statistic = parseInt(html.match(/共(\d+)项/)?.[1] ?? "0");
+//   }
+
+//   const table = doc.querySelector("table")?.querySelector("tbody")
+//     ?.querySelectorAll("tr");
+//   if (table === undefined) {
+//     return { success: false, reason: "Document Type Error!", fatal: true }; // Fatal Error!
+//   }
+//   const content = table.map((tr) => {
+//     const cells = tr.children.map((x) =>
+//       x.textContent.replace(/(\s|&nbsp;)+/g, " ").trim()
+//     );
+//     return {
+//       department: cells[6],
+//       topic: cells[0],
+//       name: cells[1],
+//       date: cells[3],
+//       need_appointment: is_appointment_required(cells[7]),
+//     };
+//   });
+
+//   // DEBUG
+//   // await writeFile("dist/table.json", JSON.stringify(content, null, 2));
+//   return { success: true, data: content, length: statistic };
+// }
+
+export function get_lectures_num(html: string): number|undefined {
   const parser = DomParser();
-
-  // parse the source
   const doc = parser.parseFromString(fix_html(html)).root;
 
   const info = doc.querySelector("bn-info")?.textContent ?? "";
@@ -73,28 +106,8 @@ export function parse_lectures(html: string): FetchLectures {
   if (isNaN(statistic) || !(statistic > 0)) {
     statistic = parseInt(html.match(/共(\d+)项/)?.[1] ?? "0");
   }
-
-  const table = doc.querySelector("table")?.querySelector("tbody")
-    ?.querySelectorAll("tr");
-  if (table === undefined) {
-    return { success: false, reason: "Document Type Error!", fatal: true }; // Fatal Error!
-  }
-  const content = table.map((tr) => {
-    const cells = tr.children.map((x) =>
-      x.textContent.replace(/(\s|&nbsp;)+/g, " ").trim()
-    );
-    return {
-      department: cells[6],
-      topic: cells[0],
-      name: cells[1],
-      date: cells[3],
-      need_appointment: is_appointment_required(cells[7]),
-    };
-  });
-
-  // DEBUG
-  // await writeFile("dist/table.json", JSON.stringify(content, null, 2));
-  return { success: true, data: content, length: statistic };
+  
+  return statistic > 0 ? statistic : undefined;
 }
 
 const appointment = [
@@ -118,7 +131,7 @@ function is_appointment_required(info: string): boolean {
 /** Extract the lecture list from the HTML of the lecture series page
  * @returns null if the HTML structure is unexpected, otherwise a list of lectures (possibly empty)
  */
-export function parse_list_lectures(html: string): ListLecture[] | null {
+export function parse_list_lectures(html: string): Lecture[] | null {
   const parser = DomParser();
   const doc = parser.parseFromString(fix_html(html)).root;
   const table = doc
@@ -140,7 +153,7 @@ export function parse_list_lectures(html: string): ListLecture[] | null {
         .filter((x) => x !== undefined)[0];
 
     // console.log(cells[7]);
-    const ret: ListLecture = {
+    const ret: Lecture = {
       seriesName: cells[0] ?? "",
       lectureName: cells[1] ?? "",
       creditHours: cells[2] ?? "",
@@ -165,9 +178,8 @@ export function parse_lecture_detail(html: string): DetailLecture | null {
   const parser = DomParser();
   const doc = parser.parseFromString(fix_html(html)).root;
   const table = doc.querySelector("table")?.querySelectorAll("td");
-  if (!table) return null;
   const ret: DetailLecture = {
-    lectureName: "",
+    lectureName: "[ERROR] Cannot parse lecture name",
     creditHours: "",
     department: "",
     targetedObjects: "",
@@ -177,6 +189,7 @@ export function parse_lecture_detail(html: string): DetailLecture | null {
     timeOfEnding: "",
     lectureIntroduction: "",
   };
+  if (!table) return ret;
   table.forEach((t) => {
     const [k, v] = t.textContent.trim().split("：");
     switch (k) {
@@ -215,10 +228,10 @@ export function find_new_lectures(
   lectures: Lecture[],
 ): null | Lecture[] {
   const old = new Set(
-    history.map((l) => `${l.department}-${l.topic}-${l.name}`),
+    history.map((l) => `${l.department}-${l.seriesName}-${l.lectureName}`),
   );
   const new_lec = lectures.filter((l) =>
-    !old.has(`${l.department}-${l.topic}-${l.name}`)
+    !old.has(`${l.department}-${l.seriesName}-${l.lectureName}`)
   );
   if (new_lec.length === 0) {
     return null;

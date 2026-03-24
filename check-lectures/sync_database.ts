@@ -5,7 +5,7 @@ import { fetch_lecture_list, fetch_url, login_for_data } from "./login.ts";
 import {
   DETAILED_LECTURE,
   type DetailLecture,
-  type ListLecture,
+  type Lecture,
   parse_lecture_detail,
   parse_list_lectures,
 } from "./extract.ts";
@@ -45,10 +45,11 @@ export interface MergedLecture {
 
 // ================= 模拟网络请求函数 =================
 // 实际使用时替换为你自己的爬虫逻辑
-async function list_lectures(
+export async function list_lectures(
   category: "humanity" | "science",
-): Promise<ListLecture[]> {
-  const ret: ListLecture[] = [];
+  cutoffDays: number = HISTORICAL_DATA_CUTOFF_DAYS,
+): Promise<Lecture[]> {
+  const ret: Lecture[] = [];
   for (let page = STARTING_PAGE; page <= MAX_PAGE; page++) {
     console.log(`正在抓取 ${category} 分类，第 ${page} 页...`);
     const lecture_list = await fetch_lecture_list(
@@ -81,7 +82,7 @@ async function list_lectures(
     );
     if (
       oldestTime <
-        Date.now() - HISTORICAL_DATA_CUTOFF_DAYS * 24 * 60 * 60 * 1000
+        Date.now() - cutoffDays * 24 * 60 * 60 * 1000
     ) {
       console.log(
         `检测到数据时间较旧，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`,
@@ -92,6 +93,7 @@ async function list_lectures(
   console.log(`达到分页上限，停止抓取。共抓取到 ${ret.length} 条数据。`);
   return ret;
 }
+
 async function lecture_detail(url: string): Promise<DetailLecture> {
   const content = await fetch_url(url);
   // success guard
@@ -187,12 +189,12 @@ async function ensureDir(dirPath: string) {
   }
 }
 
-async function syncCategory(category: "humanity" | "science") {
+export async function sync_database(category: "humanity" | "science", rawList: Lecture[]): Promise<void> {
   console.log(`\n=== 开始同步分类: ${category} ===`);
   const archiveDir = join(BASE_DIR, category, "archive");
   await ensureDir(archiveDir);
 
-  const rawList = await list_lectures(category);
+  // const rawList = await list_lectures(category);
   if (!rawList || rawList.length === 0) {
     console.log("未抓取到任何数据。");
     return;
@@ -401,18 +403,18 @@ async function syncCategory(category: "humanity" | "science") {
   }
 }
 
-// ================= 执行入口 =================
-async function main() {
-  try {
-    await syncCategory("humanity");
-    await syncCategory("science");
-    console.log("\n🎉 所有讲座数据同步流程执行完毕！");
-  } catch (err) {
-    console.error("执行过程中发生错误:", err);
-    process.exit(1);
-  }
-}
+// // ================= 执行入口 =================
+// async function main() {
+//   try {
+//     await syncCategory("humanity");
+//     await syncCategory("science");
+//     console.log("\n🎉 所有讲座数据同步流程执行完毕！");
+//   } catch (err) {
+//     console.error("执行过程中发生错误:", err);
+//     process.exit(1);
+//   }
+// }
 
-if (import.meta.main) {
-  await main();
-}
+// if (import.meta.main) {
+//   await main();
+// }

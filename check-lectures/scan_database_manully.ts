@@ -66,7 +66,7 @@ async function main(type: "humanity" | "science") {
     (await readFile(`./dist/${type}_missing_lectures.json`, { encoding: "utf-8" })).toString()
   );
 
-  const missing_ids = await get_missing_ids(type, stat);
+  let missing_ids = await get_missing_ids(type, stat);
   console.log(
     `Missing ${missing_ids.length} lectures: ${missing_ids.slice(0, 10).join(", ")
     }${missing_ids.length > 10 ? `... (${missing_ids.length - 10} more)` : ""}`,
@@ -77,10 +77,15 @@ async function main(type: "humanity" | "science") {
   });
 
 
+  // missing_ids = Object.entries(stat).map((c, i, arr) => c[1] == false && arr[i + 1]?.[1] == false ? (parseInt(c[0]) + parseInt(arr[i + 1][0])) >> 1 : null).filter((x): x is number => !!x && missing_ids.includes(x));
+  const RANDOM_SAMPLE = 100;
+  missing_ids = missing_ids.sort(() => Math.random() - 0.5).slice(0, RANDOM_SAMPLE);
   let startTime = performance.now();
   let i = 0;
   const MAX_READ = 500; // Limit the number of lectures to read in one run
+
   for (const id of missing_ids.slice(-MAX_READ)) {
+    // for (const id of Array.from({length: 120}, (_, i)=> i * 50 + 25)) {
     const total = Math.min(missing_ids.length, MAX_READ);
     const prog = Math.round(i / total * 10000) / 100;
     const elapsed = (performance.now() - startTime) / 1000;
