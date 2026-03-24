@@ -317,6 +317,10 @@ export async function sync_database(category: "humanity" | "science", rawList: L
         // 核心 Diff 逻辑：只对比列表页能拿到的高频变动字段
         if (
           existingLec.title !== newLec.title ||
+          existingLec.creditHours !== newLec.creditHours ||
+          existingLec.department !== newLec.department ||
+          existingLec.targetAudience !== newLec.targetAudience ||
+          existingLec.speaker !== newLec.speaker ||
           existingLec.startTimestamp !== newLec.startTimestamp ||
           existingLec.endTimestamp !== newLec.endTimestamp ||
           existingLec.isAppointmentRequired !== newLec.isAppointmentRequired
