@@ -373,7 +373,7 @@ export async function sync_database(category: "humanity" | "science", rawList: L
 
 
   // 3. 产出网页专用热数据 (Export Hot Data)
-  if (hasAnyUpdate) {
+  if (hasAnyUpdate || process.env.DEBUG_FORCE_SYNC === "true") {
 
     // 获取热数据列表 (仅包含最近和未来的讲座，且限制数量，供网页展示使用)
     const allRecentLectures: MergedLecture[] = [];
