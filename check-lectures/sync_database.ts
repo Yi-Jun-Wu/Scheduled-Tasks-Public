@@ -13,8 +13,8 @@ import {
 const STARTING_PAGE = 1; // 根据实际情况调整分页数量 (1)
 const MAX_PAGE = 10; // 根据实际情况调整分页数量 (10)
 const MAX_UPDATED_LECTURES = 30; // 热数据限制，防止一次性更新过多 (30)
-const RECENT_DAYS_RANGE = 7; // 最近时间范围，单位：天 (7)
-const FUTURE_DAYS_RANGE = 14; // 未来时间范围，单位：天 (14)
+const RECENT_DAYS_RANGE = 7 * 8; // 最近时间范围，单位：天 (7)
+const FUTURE_DAYS_RANGE = 7 * 9; // 未来时间范围，单位：天 (14)
 const HISTORICAL_DATA_CUTOFF_DAYS = 20; // 历史数据截止线，超过这个时间的讲座不再继续抓取 (20)
 
 // 彻底独立、字段规范化、前端友好的最终存储结构
