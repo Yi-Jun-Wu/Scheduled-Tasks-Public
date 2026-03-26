@@ -77,13 +77,12 @@ export async function list_lectures(
     }, 0);
     ret.push(...parsedLectures);
     console.log(
-      `抓取到 ${parsedLectures.length} 条数据, 最早的讲座时间: ${
-        oldestTime > 0 ? new Date(oldestTime).toLocaleString() : "未知"
+      `抓取到 ${parsedLectures.length} 条数据, 最早的讲座时间: ${oldestTime > 0 ? new Date(oldestTime).toLocaleString() : "未知"
       }`,
     );
     if (
       oldestTime <
-        Date.now() - cutoffDays * 24 * 60 * 60 * 1000
+      Date.now() - cutoffDays * 24 * 60 * 60 * 1000
     ) {
       console.log(
         `检测到数据时间较旧，停止继续抓取后续页面。共抓取到 ${ret.length} 条数据。`,
@@ -190,6 +189,12 @@ async function ensureDir(dirPath: string) {
   }
 }
 
+function get_month_key(timestamp: number): string {
+  if (timestamp <= 0) return "unknown";
+  const dateObj = new Date(timestamp);
+  return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export async function sync_database(category: "humanity" | "science", rawList: Lecture[]): Promise<void> {
   console.log(`\n=== 开始同步分类: ${category} ===`);
   const archiveDir = join(BASE_DIR, category, "archive");
@@ -214,13 +219,7 @@ export async function sync_database(category: "humanity" | "science", rawList: L
     const { start, end } = parseLectureTimeSafe(item.lectureTime);
 
     // 如果时间解析失败(start === 0)，放入 unknown.json 以免干扰正常日历
-    let monthKey = "unknown";
-    if (start > 0) {
-      const dateObj = new Date(start);
-      monthKey = `${dateObj.getFullYear()}-${
-        String(dateObj.getMonth() + 1).padStart(2, "0")
-      }`;
-    }
+    const monthKey = get_month_key(start);
 
     if (!groupedNewLectures[monthKey]) {
       groupedNewLectures[monthKey] = [];
@@ -251,9 +250,6 @@ export async function sync_database(category: "humanity" | "science", rawList: L
 
   // 2. 差异比对与详情抓取 (Diff & Fetch Details)
   let hasAnyUpdate = false;
-  const allRecentLectures: MergedLecture[] = [];
-  const RECENT_DAYS = Date.now() - RECENT_DAYS_RANGE * 24 * 60 * 60 * 1000;
-  const FUTURE_DAYS = Date.now() + FUTURE_DAYS_RANGE * 24 * 60 * 60 * 1000;
 
   let updateCount = 0;
 
@@ -373,17 +369,35 @@ export async function sync_database(category: "humanity" | "science", rawList: L
         "utf-8",
       );
     }
-
-    // 热数据收集：过滤掉时间异常(0)的，且只保留最近及未来的数据
-    const recentInThisMonth = localArchive.filter((l) =>
-      l.startTimestamp > 0 && l.startTimestamp >= RECENT_DAYS &&
-      l.startTimestamp <= FUTURE_DAYS
-    );
-    allRecentLectures.push(...recentInThisMonth);
   }
+
 
   // 3. 产出网页专用热数据 (Export Hot Data)
   if (hasAnyUpdate) {
+
+    // 获取热数据列表 (仅包含最近和未来的讲座，且限制数量，供网页展示使用)
+    const allRecentLectures: MergedLecture[] = [];
+    const thisMonday = new Date();
+    thisMonday.setDate(thisMonday.getDate() - thisMonday.getDay() + 1); // 调整到本周一
+    thisMonday.setHours(0, 0, 0, 0); // 本周一的零点
+    const RECENT_DAYS = thisMonday.getTime() - RECENT_DAYS_RANGE * 24 * 60 * 60 * 1000;
+    const FUTURE_DAYS = thisMonday.getTime() + FUTURE_DAYS_RANGE * 24 * 60 * 60 * 1000;
+
+    for (let i = RECENT_DAYS; i <= FUTURE_DAYS; i += 30 * 24 * 60 * 60 * 1000) {
+      const monthKey = get_month_key(i);
+      const archivePath = join(archiveDir, `${monthKey}.json`);
+      try {
+        const rawData = await readFile(archivePath, "utf-8");
+        const lectures: MergedLecture[] = JSON.parse(rawData);
+        allRecentLectures.push(...lectures.filter((lec) => {
+          return lec.startTimestamp >= RECENT_DAYS && lec.startTimestamp <= FUTURE_DAYS;
+        }));
+      } catch (e) {
+        // 文件不存在或解析失败，跳过
+        continue;
+      }
+    }
+
     allRecentLectures.sort((a, b) => a.startTimestamp - b.startTimestamp);
     const latestPath = join(BASE_DIR, category, "latest.json");
 
