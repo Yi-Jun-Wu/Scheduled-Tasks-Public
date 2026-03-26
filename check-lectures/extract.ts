@@ -18,6 +18,7 @@ export interface Lecture {
   lectureTime: string; // "2026-03-25 18:30-20:30"
   lecturer: string;
   appointmentRequired: boolean;
+  appointmentInfo?: string;
   detailUrl: string;
 }
 export const LIST_LECTURE: Lecture = {
@@ -116,6 +117,7 @@ const appointment = [
   "预约已结束",
   "已经预约过",
   "已预约过",
+  "预约时间",
 ];
 
 const no_appointment = [
@@ -126,6 +128,12 @@ const no_appointment = [
 function is_appointment_required(info: string): boolean {
   return appointment.some((x) => info.includes(x)) &&
     !no_appointment.some((x) => info.includes(x));
+}
+
+function get_appointment_info(info: string): string | undefined {
+  const reg = /预约时间[:：]?\s*([\d\-~年月日\s:]+)\s*$/;
+  const match = info.match(reg);
+  return match ? match[1] : undefined;
 }
 
 /** Extract the lecture list from the HTML of the lecture series page
@@ -164,6 +172,9 @@ export function parse_list_lectures(html: string): Lecture[] | null {
       appointmentRequired: is_appointment_required(cells[7] ?? ""),
       detailUrl: url ?? "",
     };
+    if (ret.appointmentRequired) {
+      ret.appointmentInfo = get_appointment_info(cells[7] ?? "");
+    }
     return ret;
   });
 }

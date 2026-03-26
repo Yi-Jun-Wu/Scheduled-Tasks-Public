@@ -27,6 +27,7 @@ export interface MergedLecture {
   targetAudience: string; // 面向对象 (映射自 targetedObjects)
   speaker: string; // 主讲人 (映射自 lecturer)
   isAppointmentRequired: boolean; // 是否需要预约
+  appointmentInfo?: string; // 预约相关信息（新增字段，映射自 appointmentInfo）
   sourceUrl: string; // 详情页地址 (映射自 detailUrl)
 
   // 统一处理后的绝对时间 (解决原始数据格式混乱问题)
@@ -235,6 +236,7 @@ export async function sync_database(category: "humanity" | "science", rawList: L
       targetAudience: item.targetedObjects || "",
       speaker: item.lecturer || "",
       isAppointmentRequired: !!item.appointmentRequired,
+      appointmentInfo: item.appointmentInfo,
       sourceUrl: safeUrl,
       startTimestamp: start,
       endTimestamp: end,

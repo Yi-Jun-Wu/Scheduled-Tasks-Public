@@ -101,6 +101,8 @@ export async function post_notification(
     return;
   }
 
+  // DEBUG
+  return;
   for (const API_KEY of API_KEYs) {
     try {
       const url = `https://sctapi.ftqq.com/${API_KEY}.send`;
