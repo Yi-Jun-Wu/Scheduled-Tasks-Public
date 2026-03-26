@@ -101,8 +101,14 @@ export async function post_notification(
     return;
   }
 
-  // DEBUG
-  return;
+  if(process.env['DEBUG'] === 'true') {
+    console.log("DEBUG 模式: 将打印通知内容而不发送 API 请求。");
+    console.log("以下是将要发送的通知内容:");
+    console.log("Header:", header);
+    console.log("Description:", description);
+    console.log("Brief:", brief);
+    return;
+  }
   for (const API_KEY of API_KEYs) {
     try {
       const url = `https://sctapi.ftqq.com/${API_KEY}.send`;
