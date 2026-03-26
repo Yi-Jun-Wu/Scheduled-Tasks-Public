@@ -79,7 +79,7 @@ async function main(type: "humanity" | "science" = "humanity", to_sync_database:
       console.error("Failed to post notification:", (e as Error).message);
     }
   }
-  if (to_sync_database) {
+  if (to_sync_database || process.env.DEBUG_FORCE_SYNC === "true") {
     try {
       await sync_database(type, result.lectures_list);
       console.log("\n🎉 讲座数据同步流程执行完毕！");
