@@ -48,10 +48,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 7
     steps:
+      # Enable Network traffics rules
       - name: Harden Runner
-        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
+        uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            cdn.jsdelivr.net:443
+            github.com:443
+            registry.npmjs.org:443
+            sctapi.ftqq.com:443
+            sep.ucas.ac.cn:443
+            xkcts.ucas.ac.cn:8443
+            
       # Checks-out repo
       - uses: actions/checkout@v6
 
