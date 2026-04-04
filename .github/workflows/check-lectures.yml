@@ -71,9 +71,12 @@ jobs:
             github.com:443
             registry.npmjs.org:443
             sctapi.ftqq.com:443
+            qyapi.weixin.qq.com:443
+            *.weixin.qq.com:443
             *.ucas.ac.cn:443
             *.ucas.ac.cn:8443
             xkcts.ucas.ac.cn:8443
+            
             
       # Checks-out repo
       - uses: actions/checkout@v6
@@ -125,14 +128,17 @@ jobs:
           # 配置通知系统需要拉取的注册来源
           COMMENT_NODE_ID_HUMANITY: DC_kwDORqBAz84A93qz
           COMMENT_NODE_ID_SCIENCE: DC_kwDORqBAz84A93rQ
+          COMMENT_NODE_ID_HUMANITY_WEBHOOK: DC_kwDORqBAz84A-vCR
+          COMMENT_NODE_ID_SCIENCE_WEBHOOK: DC_kwDORqBAz84A-vCd
           # 配置通知系统需要的 RSA 私钥(解密 Api Key)
           RSA_PRIVATE_KEY: ${{ secrets.RSA_PRIVATE_KEY }}
+          RSA_PRIVATE_KEY_LONG: ${{ secrets.RSA_PRIVATE_KEY_LONG }}
           # 配置通知系统需要的 GitHub Token
           DISCUSSION_READ_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # 强制同步数据库的标志
           DEBUG_FORCE_SYNC: ${{ github.event.inputs.force_sync_database }}
           # 启用调试模式
-          DEUBG: ${{ github.event.inputs.debug }}
+          DEBUG: ${{ github.event.inputs.debug }}
 
       # 当需要同步数据库时，提交更改并推送到远程仓库
       - name: Post Sync Database (Commit Changes)

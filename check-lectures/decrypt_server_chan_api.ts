@@ -10,6 +10,15 @@ if (!privateKey || privateKey.trim() === "") {
   process.exit(1);
 }
 
+const privateKey2 = process.env.RSA_PRIVATE_KEY_LONG ||
+  readFileSync("./private2.pem", "utf8");
+if (!privateKey || privateKey.trim() === "") {
+  console.error(
+    "未找到 RSA 私钥，请确保环境变量 RSA_PRIVATE_KEY 已设置且 Github Secrets 已配置",
+  );
+  process.exit(1);
+}
+
 /**
  * 解密 RSA-OAEP-SHA256 的 Hex 字符串
  * @param {string} encryptedHex - 小写的 hex 密文
@@ -120,4 +129,33 @@ export function processApiKeys(raw: string[]): string[] {
   const candidates = batchParseApiKeys(raw);
   const decryptedKeys = decryptBatchApiKeys(candidates, privateKey);
   return decryptedKeys;
+}
+
+export function processAnyApiKeys(raw: string[]): any[] {
+  const keys = [privateKey, privateKey2];
+  const ret = new Set();
+  for (let i = 0; i < raw.length; i++) {
+    let item = raw[i].trim();
+    if (item.length > 30) {
+      // 如果长度超过 30，尝试解密
+      for (const key of keys) {
+        const decrypted = decryptApiKey(item, key)?.trim();
+        if (decrypted) {
+          item = decrypted;
+          break;
+        }
+      }
+    }
+    // 尝试解析为 JSON，如果失败则保留原字符串
+    try {
+      item = JSON.parse(item);
+    } catch (e) {
+      if (item.length > 50) {
+        console.log(`非 JSON 格式，舍弃`);
+        continue;
+      }
+    }
+    ret.add(item);
+  }
+  return [...ret];
 }
