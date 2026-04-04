@@ -250,7 +250,7 @@ export async function login_for_data(
           loginRes.data,
           loginRes.headers,
         );
-        throw new Error(`登录失败，返回 URL: ${finalUrl}`);
+        // throw new Error(`登录失败，返回 URL: ${finalUrl}`);
 
         if (attempt === MAX_LOGIN_ATTEMPTS) {
           throw new Error(
@@ -258,8 +258,8 @@ export async function login_for_data(
           );
         }
         console.log("准备进行下一次尝试...\n");
-        // 失败后等待 1 秒，让之前的 Session 彻底失效，并为下一次请求留出缓冲
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // 失败后等待 2 秒，让之前的 Session 彻底失效，并为下一次请求留出缓冲
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       } else {
         console.log("✅ 登录成功！顺利突破认证。", finalUrl);
         loginSuccess = true;
