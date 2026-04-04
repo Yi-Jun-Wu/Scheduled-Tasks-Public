@@ -110,10 +110,15 @@ jobs:
           fetch-depth: 1
           path: check-lectures/lectures
 
-      # 安装 npm 包, 使用 --ignore-scripts 禁用生命周期脚本(postinstall)
+      
       - name: Install npm packages (Isolated for security)
         run: |
           cd check-lectures
+          
+          # 设置 npm 包的最小发布时间为 10 天，避免安装过于新的包，这些包没有经过充分的社区审查，存在安全风险
+          npm config set min-release-age=10
+
+          # 安装 npm 包, 使用 --ignore-scripts 禁用生命周期脚本(postinstall)，避免安装过程中执行恶意代码
           npm install axios axios-cookiejar-support sharp tesseract.js tough-cookie @thednp/domparser @octokit/graphql --ignore-scripts
       
       # 核心步骤：运行主要的脚本，获取最新的讲座信息，发送通知等
