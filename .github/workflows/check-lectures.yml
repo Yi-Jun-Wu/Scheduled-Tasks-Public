@@ -60,9 +60,9 @@ jobs:
             cdn.jsdelivr.net:443
             github.com:443
             registry.npmjs.org:443
-            sctapi.ftqq.com:443
-            sep.ucas.ac.cn:443
-            xkcts.ucas.ac.cn:8443
+            sctapi.ftqq.com:443             # Server chan
+            *.ucas.ac.cn:443                # Sep
+            *.ucas.ac.cn:8443               # Lecture Selector
             
       # Checks-out repo
       - uses: actions/checkout@v6
@@ -96,11 +96,16 @@ jobs:
           fetch-depth: 1
           path: check-lectures/lectures
 
+      # 安装 npm 包, 使用 --ignore-scripts 禁用生命周期脚本(postinstall)
+      - name: Install npm packages (Isolated for security)
+        run: |
+          cd check-lectures
+          npm install axios axios-cookiejar-support sharp tesseract.js tough-cookie @thednp/domparser @octokit/graphql --ignore-scripts
+      
       # 核心步骤：运行主要的脚本，获取最新的讲座信息，发送通知等
       - name: Run main scripts for checking UCAS Lectures
         run: |
           cd check-lectures
-          npm install axios axios-cookiejar-support sharp tesseract.js tough-cookie @thednp/domparser @octokit/graphql
           node main.ts ${{ github.event.inputs.sync_database }}
         env:
           # 配置扫描系统需要的账号密码
