@@ -62,7 +62,7 @@ jobs:
       
       # 核心步骤：恢复上一次的 Cookie 缓存, 以及
       - name: Restore Session Cookie
-        if: ${{ github.event.inputs.force_no_cache == 'true'}}
+        if: ${{ github.event.inputs.force_no_cache == 'false'}}
         id: cache-cookie-restore
         uses: actions/cache/restore@v5
         with:
