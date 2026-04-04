@@ -53,6 +53,8 @@ jobs:
         uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594 # v2.16.0
         with:
           egress-policy: block
+          # Disable sending telemetry to StepSecurity API, can be set to true or false. This can only be set to true when egress-policy is set to block
+          disable-telemetry: true
           allowed-endpoints: >
             api.github.com:443
             cdn.jsdelivr.net:443
