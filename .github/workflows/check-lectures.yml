@@ -14,6 +14,11 @@ on:
         required: false
         type: boolean
         default: false
+      force_no_cache:
+        description: 'DO NOT load ANY SESSION from cache'
+        required: false
+        type: boolean
+        default: false
   
   # schedule:
     # see: https://crontab.guru/ for corn format.
@@ -57,6 +62,7 @@ jobs:
       
       # 核心步骤：恢复上一次的 Cookie 缓存, 以及
       - name: Restore Session Cookie
+        if: ${{ github.event.inputs.force_no_cache == 'true'}}
         id: cache-cookie-restore
         uses: actions/cache/restore@v5
         with:
