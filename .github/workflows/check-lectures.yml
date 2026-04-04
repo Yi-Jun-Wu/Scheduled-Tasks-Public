@@ -55,14 +55,18 @@ jobs:
           egress-policy: block
           # Disable sending telemetry to StepSecurity API, can be set to true or false. This can only be set to true when egress-policy is set to block
           disable-telemetry: true
+          disable-file-monitoring: true
+          # Server chan: sctapi.ftqq.com:443
+          # Sep: *.ucas.ac.cn:443
+          # Lecture Selector: *.ucas.ac.cn:8443
           allowed-endpoints: >
             api.github.com:443
             cdn.jsdelivr.net:443
             github.com:443
             registry.npmjs.org:443
-            sctapi.ftqq.com:443             # Server chan
-            *.ucas.ac.cn:443                # Sep
-            *.ucas.ac.cn:8443               # Lecture Selector
+            sctapi.ftqq.com:443
+            *.ucas.ac.cn:443
+            *.ucas.ac.cn:8443
             
       # Checks-out repo
       - uses: actions/checkout@v6
