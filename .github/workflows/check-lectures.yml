@@ -19,6 +19,11 @@ on:
         required: false
         type: boolean
         default: false
+      debug:
+        description: 'DO NOT SEND NOTIFICATIONS'
+        required: false
+        type: boolean
+        default: false
   
   # schedule:
     # see: https://crontab.guru/ for corn format.
@@ -125,6 +130,8 @@ jobs:
           DISCUSSION_READ_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # 强制同步数据库的标志
           DEBUG_FORCE_SYNC: ${{ github.event.inputs.force_sync_database }}
+          # 启用调试模式
+          DEUBG: ${{ github.event.inputs.debug }}
 
       # 当需要同步数据库时，提交更改并推送到远程仓库
       - name: Post Sync Database (Commit Changes)
