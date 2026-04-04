@@ -54,7 +54,7 @@ jobs:
         with:
           egress-policy: block
           # Disable sending telemetry to StepSecurity API, can be set to true or false. This can only be set to true when egress-policy is set to block
-          disable-telemetry: true
+          # disable-telemetry: true
           disable-file-monitoring: true
           # Server chan: sctapi.ftqq.com:443
           # Sep: *.ucas.ac.cn:443
