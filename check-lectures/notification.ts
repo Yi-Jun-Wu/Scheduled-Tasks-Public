@@ -4,15 +4,6 @@ import { processAnyApiKeys, processApiKeys } from "./decrypt_server_chan_api.ts"
 import type { Lecture } from "./extract.ts";
 import { get_all_replies } from "./get_all_replies.ts";
 
-// // 从环境变量读取账号密码
-// const API_KEY = process.env.API_KEY!;
-// if (API_KEY === undefined) {
-//   console.error("❌ 致命错误: 未检测到 API_KEY 环境变量！");
-//   console.error(
-//     "如果你在 GitHub Actions 运行，请检查 workflow 的 env 配置以及 Secrets 是否正确绑定。",
-//   );
-//   process.exit(1); // 异常退出
-// }
 
 const REGISTER_URL =
   "https://github.com/Yi-Jun-Wu/Scheduled-Tasks-Public/discussions/1";
@@ -164,16 +155,22 @@ export async function post_notification(
   };
   const postData = new URLSearchParams(params).toString();
 
-
-  const API_KEYs = await get_server_chan_api_keys(type);
-  if (API_KEYs.length === 0) {
-    console.warn(
-      `⚠️ 警告: 未找到任何有效的 API_KEY，无法发送通知。请检查环境变量和 Secrets 配置。`,
-    );
+  if (process.env['DEBUG'] === 'true') {
+    console.log("DEBUG 模式: 将打印通知内容而不发送 API 请求。");
+    console.log("以下是将要发送的通知内容:");
+    console.log("Header:", header);
+    console.log("Description:", description);
+    console.log("Brief:", brief);
     return;
   }
 
   const WEBHOOKs = await get_webhook_keys(type);
+  if(WEBHOOKs.length === 0) {
+    console.warn(
+      `⚠️ 警告: 未找到任何有效的 WEBHOOKs，无法发送通知。请检查环境变量和 Secrets 配置。`,
+    );
+    return;
+  }
   for (const WEBHOOK of WEBHOOKs) {
     try {
       const response = await post_by_api(WEBHOOK, header, description);
@@ -188,15 +185,13 @@ export async function post_notification(
   }
 
 
-  if (process.env['DEBUG'] === 'true') {
-    console.log("DEBUG 模式: 将打印通知内容而不发送 API 请求。");
-    console.log("以下是将要发送的通知内容:");
-    console.log("Header:", header);
-    console.log("Description:", description);
-    console.log("Brief:", brief);
+  const API_KEYs = await get_server_chan_api_keys(type);
+  if (API_KEYs.length === 0) {
+    console.warn(
+      `⚠️ 警告: 未找到任何有效的 API_KEY，无法发送通知。请检查环境变量和 Secrets 配置。`,
+    );
     return;
   }
-
   for (const API_KEY of API_KEYs) {
     try {
       const url = `https://sctapi.ftqq.com/${API_KEY}.send`;
