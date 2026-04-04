@@ -43,6 +43,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 7
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
+        with:
+          egress-policy: audit
       # Checks-out repo
       - uses: actions/checkout@v6
 
