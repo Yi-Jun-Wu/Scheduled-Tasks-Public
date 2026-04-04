@@ -220,5 +220,3 @@ export async function post_notification(
   }
   return;
 }
-
-console.log(await get_webhook_keys("humanity"));
