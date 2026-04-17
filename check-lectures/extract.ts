@@ -16,6 +16,7 @@ export interface Lecture {
   department: string;
   targetedObjects: string;
   lectureTime: string; // "2026-03-25 18:30-20:30"
+  lecturePlace: string;
   lecturer: string;
   appointmentRequired: boolean;
   appointmentInfo?: string;
@@ -28,6 +29,7 @@ export const LIST_LECTURE: Lecture = {
   department: "",
   targetedObjects: "",
   lectureTime: "",
+  lecturePlace: "",
   lecturer: "",
   appointmentRequired: false,
   detailUrl: "",

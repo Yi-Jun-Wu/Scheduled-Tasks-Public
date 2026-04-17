@@ -241,7 +241,7 @@ export async function sync_database(category: "humanity" | "science", rawList: L
       endTimestamp: end,
       rawTimeStr: item.lectureTime || "",
       // 详情字段初始化为空
-      mainVenue: "",
+      mainVenue: item.lecturePlace || "",
       parallelVenue: "",
       introduction: "",
       lastUpdatedAt: new Date().toISOString(),
@@ -320,6 +320,7 @@ export async function sync_database(category: "humanity" | "science", rawList: L
           existingLec.targetAudience !== newLec.targetAudience ||
           existingLec.speaker !== newLec.speaker ||
           existingLec.startTimestamp !== newLec.startTimestamp ||
+          existingLec.mainVenue !== newLec.mainVenue ||
           existingLec.endTimestamp !== newLec.endTimestamp ||
           existingLec.isAppointmentRequired !== newLec.isAppointmentRequired
         ) {
@@ -339,6 +340,8 @@ export async function sync_database(category: "humanity" | "science", rawList: L
             existingLec.endTimestamp;
           existingLec.rawTimeStr = newLec.rawTimeStr || existingLec.rawTimeStr;
           existingLec.isAppointmentRequired = newLec.isAppointmentRequired;
+          existingLec.mainVenue = newLec.mainVenue ||
+            existingLec.mainVenue;
 
           // 顺手覆盖其他列表层面的非关键信息（防止微调）
           existingLec.speaker = newLec.speaker || existingLec.speaker;
