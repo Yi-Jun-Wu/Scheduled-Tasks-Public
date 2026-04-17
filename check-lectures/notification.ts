@@ -175,10 +175,10 @@ export async function post_notification(
     try {
       const response = await post_by_api(WEBHOOK, header, description);
       console.log("webhook call response:", response);
-      console.log(`✅ 成功发送通知到 WEBHOOK: ${JSON.stringify(WEBHOOK).slice(0, 5)}...`);
+      console.log(`✅ 成功发送通知到 WEBHOOK: '${JSON.stringify(WEBHOOK).slice(0, 8)}...'`);
     } catch (error) {
       console.error(
-        `❌ 发送通知失败，WEBHOOK: ${JSON.stringify(WEBHOOK).slice(0, 5)}, 错误:`,
+        `❌ 发送通知失败，WEBHOOK: '${JSON.stringify(WEBHOOK).slice(0, 8)}...', 错误:`,  
         error,
       );
     }
