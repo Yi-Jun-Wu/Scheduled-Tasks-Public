@@ -165,15 +165,16 @@ export function parse_list_lectures(html: string): Lecture[] | null {
       seriesName: cells[0] ?? "",
       lectureName: cells[1] ?? "",
       creditHours: cells[2] ?? "",
-      lectureTime: cells[3] ?? "",
-      targetedObjects: cells[4] ?? "",
-      lecturer: cells[5] ?? "",
-      department: cells[6] ?? "",
-      appointmentRequired: is_appointment_required(cells[7] ?? ""),
+      lecturePlace: cells[3] ?? "",
+      lectureTime: cells[4] ?? "",
+      targetedObjects: cells[5] ?? "",
+      lecturer: cells[6] ?? "",
+      department: cells[7] ?? "",
+      appointmentRequired: is_appointment_required(cells[8] ?? ""),
       detailUrl: url ?? "",
     };
     if (ret.appointmentRequired) {
-      ret.appointmentInfo = get_appointment_info(cells[7] ?? "");
+      ret.appointmentInfo = get_appointment_info(cells[8] ?? "");
     }
     return ret;
   });
